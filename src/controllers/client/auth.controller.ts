@@ -20,7 +20,7 @@ import { SuccessMessages } from '../../constants/messages';
 import { AuthGuard } from '../../utils/auth/auth.guard';
 import { Public } from '../../utils/auth/public.decorator';
 import { CurrentUser } from '../../utils/decorators/current-user.decorator';
-
+import { AuthGuard as PassportAuthGuard} from '@nestjs/passport';
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -132,5 +132,22 @@ export class AuthController {
       .message(SuccessMessages.UPDATE_SUCCESSFULLY)
       .status(HttpStatusCode.Ok)
       .build();
+  }
+
+  @Public()
+  @Get('google')
+  @UseGuards(PassportAuthGuard('google'))
+  async googleAuth() {
+  }
+  @Public()
+  @Get('google/callback')
+  @UseGuards(PassportAuthGuard('google'))
+  async googleAuthRedirect(@Req() req: Request, @Res() res: Response) {
+    const user = req.user;
+    const result = await this.authService.generateTokenGoogle(user, res);
+
+    res.redirect(
+      `http://localhost:3000/login-success?token=${result.newAccessToken}`
+    );
   }
 }

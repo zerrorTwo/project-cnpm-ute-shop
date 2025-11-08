@@ -179,4 +179,35 @@ export class AuthService {
 
     return { message: 'Mật khẩu đã được đặt lại thành công.' };
   }
+
+  async generateTokenGoogle(profile: any, response: Response) {
+    const email = profile.email;
+    let user = await this.userRepository.findByEmail(email);
+
+    if (!user) {
+      const hashedPassword = await hashPassword('uteShop@');
+      user = await this.userRepository.create({
+        email,
+        fullName: profile.displayName,
+        password: hashedPassword,
+      });
+    }
+    const payload = { id: user.id, email: user.email };
+    const newAccessToken = generateAccessToken(payload);
+    const newRefreshToken = generateRefreshToken(payload);
+    response.cookie('refreshToken', newRefreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
+    return {
+        newAccessToken,
+        user: {
+          id: user.id,
+          email: user.email,
+          fullName: user.fullName,
+        },
+      };
+  }
 }
