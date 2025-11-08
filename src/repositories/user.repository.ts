@@ -145,4 +145,12 @@ export class UserRepository {
       .limit(20)
       .getMany();
   }
+
+ async updatePassword(email: string, newPassword: string): Promise<User> {
+    const user = await this.findByEmail(email);
+    if (!user) throw new Error('User not found');
+
+    user.password = newPassword;
+    return this.repository.save(user);
+  }
 }
