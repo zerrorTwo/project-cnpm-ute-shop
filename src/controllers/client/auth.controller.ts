@@ -13,6 +13,7 @@ import type { Response, Request } from 'express';
 import { Builder } from 'builder-pattern';
 import { HttpStatusCode } from 'axios';
 import { AuthService } from '../../services/auth.service';
+import { MailService } from '../../services/mail.service';
 import { RegisterDto, LoginDto } from '../../dtos/auth.dto';
 import { SuccessResponse } from '../../dtos/response.dto';
 import { SuccessMessages } from '../../constants/messages';
@@ -22,7 +23,9 @@ import { CurrentUser } from '../../utils/decorators/current-user.decorator';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly mailService: MailService,
+    private readonly authService: AuthService) {}
 
   @Public()
   @Post('register')
@@ -90,6 +93,43 @@ export class AuthController {
     return Builder<SuccessResponse>()
       .data(result)
       .message(SuccessMessages.GET_SUCCESSFULLY)
+      .status(HttpStatusCode.Ok)
+      .build();
+  }
+
+  @Public()
+  @Post('verify-account')
+  async verifyAccount(@Body() registerDto: RegisterDto,@Body('otp') otp: string) {
+    const result = await this.authService.verifyOtp(registerDto, otp);
+     return Builder<SuccessResponse>()
+      .data(result)
+      .message(SuccessMessages.CREATE_SUCCESSFULLY)
+      .status(HttpStatusCode.Ok)
+      .build();
+  }
+
+@Public()
+  @Post('forgot-password')
+  async forgotPassword(@Body('email') email: string) {
+    const result = await this.authService.forgotPassword(email);
+    return Builder<SuccessResponse>()
+      .data(result)
+      .message(SuccessMessages.CREATE_SUCCESSFULLY)
+      .status(HttpStatusCode.Ok)
+      .build();
+  }
+
+  @Public()
+  @Post('reset-password')
+  async resetPassword(
+    @Body('email') email: string,
+    @Body('otp') otp: string,
+    @Body('newPassword') newPassword: string,
+  ) {
+    const result = await this.authService.resetPassword(email, otp, newPassword);
+    return Builder<SuccessResponse>()
+      .data(result)
+      .message(SuccessMessages.UPDATE_SUCCESSFULLY)
       .status(HttpStatusCode.Ok)
       .build();
   }

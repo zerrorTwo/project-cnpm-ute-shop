@@ -21,7 +21,7 @@ import { User } from './entities/user.entity';
         host: configService.get<string>('DB_HOST', 'localhost'),
         port: configService.get<number>('DB_PORT', 3306),
         username: configService.get<string>('DB_USERNAME', 'root'),
-        password: configService.get<string>('DB_PASSWORD', ''),
+        password: configService.get<string>('DB_PASSWORD', 'Phongga088@'),
         database: configService.get<string>('DB_NAME', 'ute_shop'),
         entities: [User],
         synchronize: true,

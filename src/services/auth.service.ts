@@ -14,38 +14,43 @@ import { RegisterDto, LoginDto } from '../dtos/auth.dto';
 import type { Response } from 'express';
 import { ErrorMessages } from '../constants/messages';
 import { UserRepository } from '../repositories/user.repository';
-
+import { MailService } from '../services/mail.service';
 @Injectable()
 export class AuthService {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(
+     private readonly userRepository: UserRepository,
+    private readonly mailService: MailService) {}
 
   async register(registerDto: RegisterDto) {
-    const { email, password, fullName } = registerDto;
+      const { email, password, fullName } = registerDto;
 
-    // Check if user exists
-    const existingUser = await this.userRepository.findByEmail(email);
-
-    if (existingUser) {
-      throw new BadRequestException(ErrorMessages.EMAIL_ALREADY_EXISTS);
+      const existingUser = await this.userRepository.findByEmail(email);
+      if (existingUser) {
+        throw new BadRequestException(ErrorMessages.EMAIL_ALREADY_EXISTS);
+      }
+      await this.mailService.sendRegisterOtp(email);
+      return { message: 'OTP đã được gửi tới email của bạn.' };
     }
 
-    // Hash password
-    const hashedPassword = await hashPassword(password);
-
-    // Create user
+  async verifyOtp(registerDto: RegisterDto, otp: string) {
+    const isValiedOTP = this.mailService.validateOtp('register',registerDto.email, otp); 
+    if (!isValiedOTP) {
+      throw new BadRequestException('OTP đã hết hạn hoặc không tồn tại');
+    }
+    const hashedPassword = await hashPassword(registerDto.password);
     const user = await this.userRepository.create({
-      email,
+      email: registerDto.email,
       password: hashedPassword,
-      fullName,
+      fullName: registerDto.fullName,
     });
 
     return {
       id: user.id,
       email: user.email,
       fullName: user.fullName,
+      message: 'Xác minh OTP thành công. Tài khoản đã được tạo.',
     };
   }
-
   async login(loginDto: LoginDto, response: Response) {
     const { email, password } = loginDto;
 
@@ -145,5 +150,33 @@ export class AuthService {
       fullName: user.fullName,
       createdAt: user.createdAt,
     };
+  }
+
+   async forgotPassword(email: string) {
+    const user = await this.userRepository.findByEmail(email);
+    if (!user) {
+      throw new BadRequestException('Email không tồn tại trong hệ thống');
+    }
+
+    await this.mailService.sendResetPasswordOtp(email);
+
+    return { message: 'OTP khôi phục mật khẩu đã được gửi tới email.' };
+  }
+
+  async resetPassword(email: string, otp: string, newPassword: string) {
+    const isValid = await this.mailService.validateOtp('reset', email, otp);
+    if (!isValid) {
+      throw new BadRequestException('OTP không hợp lệ');
+    }
+
+    const user = await this.userRepository.findByEmail(email);
+    if (!user) {
+      throw new UnauthorizedException('Người dùng không tồn tại');
+    }
+
+    const hashedPassword = await hashPassword(newPassword);
+    await this.userRepository.updatePassword(user.email, hashedPassword);
+
+    return { message: 'Mật khẩu đã được đặt lại thành công.' };
   }
 }
