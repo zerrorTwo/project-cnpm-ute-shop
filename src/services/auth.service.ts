@@ -10,7 +10,7 @@ import {
   generateRefreshToken,
   verifyRefreshToken,
 } from '../utils/auth/common';
-import { RegisterDto, LoginDto } from '../dtos/auth.dto';
+import { RegisterDto, LoginDto, UpdateProfileDto } from '../dtos/auth.dto';
 import type { Response } from 'express';
 import { ErrorMessages } from '../constants/messages';
 import { UserRepository } from '../repositories/user.repository';
@@ -18,22 +18,27 @@ import { MailService } from '../services/mail.service';
 @Injectable()
 export class AuthService {
   constructor(
-     private readonly userRepository: UserRepository,
-    private readonly mailService: MailService) {}
+    private readonly userRepository: UserRepository,
+    private readonly mailService: MailService,
+  ) {}
 
   async register(registerDto: RegisterDto) {
-      const { email, password, fullName } = registerDto;
+    const { email, password, fullName } = registerDto;
 
-      const existingUser = await this.userRepository.findByEmail(email);
-      if (existingUser) {
-        throw new BadRequestException(ErrorMessages.EMAIL_ALREADY_EXISTS);
-      }
-      await this.mailService.sendRegisterOtp(email);
-      return { message: 'OTP đã được gửi tới email của bạn.' };
+    const existingUser = await this.userRepository.findByEmail(email);
+    if (existingUser) {
+      throw new BadRequestException(ErrorMessages.EMAIL_ALREADY_EXISTS);
     }
+    await this.mailService.sendRegisterOtp(email);
+    return { message: 'OTP đã được gửi tới email của bạn.' };
+  }
 
   async verifyOtp(registerDto: RegisterDto, otp: string) {
-    const isValiedOTP = this.mailService.validateOtp('register',registerDto.email, otp); 
+    const isValiedOTP = this.mailService.validateOtp(
+      'register',
+      registerDto.email,
+      otp,
+    );
     if (!isValiedOTP) {
       throw new BadRequestException('OTP đã hết hạn hoặc không tồn tại');
     }
@@ -152,7 +157,7 @@ export class AuthService {
     };
   }
 
-   async forgotPassword(email: string) {
+  async forgotPassword(email: string) {
     const user = await this.userRepository.findByEmail(email);
     if (!user) {
       throw new BadRequestException('Email không tồn tại trong hệ thống');
@@ -196,18 +201,37 @@ export class AuthService {
     const newAccessToken = generateAccessToken(payload);
     const newRefreshToken = generateRefreshToken(payload);
     response.cookie('refreshToken', newRefreshToken, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
-          maxAge: 7 * 24 * 60 * 60 * 1000,
-        });
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
     return {
-        newAccessToken,
-        user: {
-          id: user.id,
-          email: user.email,
-          fullName: user.fullName,
-        },
-      };
+      newAccessToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+      },
+    };
+  }
+  async updateProfile(userId: number, updateDto: UpdateProfileDto) {
+    const user = await this.userRepository.findById(userId);
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    const updated = await this.userRepository.update(userId, updateDto);
+
+    if (!updated) {
+      throw new BadRequestException('Failed to update profile');
+    }
+
+    return {
+      id: updated.id,
+      email: updated.email,
+      fullName: updated.fullName,
+      updatedAt: updated.updatedAt,
+    };
   }
 }

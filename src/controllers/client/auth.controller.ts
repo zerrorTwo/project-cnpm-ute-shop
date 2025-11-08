@@ -8,24 +8,27 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Patch,
+  Put,
 } from '@nestjs/common';
 import type { Response, Request } from 'express';
 import { Builder } from 'builder-pattern';
 import { HttpStatusCode } from 'axios';
 import { AuthService } from '../../services/auth.service';
 import { MailService } from '../../services/mail.service';
-import { RegisterDto, LoginDto } from '../../dtos/auth.dto';
+import { RegisterDto, LoginDto, UpdateProfileDto } from '../../dtos/auth.dto';
 import { SuccessResponse } from '../../dtos/response.dto';
 import { SuccessMessages } from '../../constants/messages';
 import { AuthGuard } from '../../utils/auth/auth.guard';
 import { Public } from '../../utils/auth/public.decorator';
 import { CurrentUser } from '../../utils/decorators/current-user.decorator';
-import { AuthGuard as PassportAuthGuard} from '@nestjs/passport';
+import { AuthGuard as PassportAuthGuard } from '@nestjs/passport';
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly mailService: MailService,
-    private readonly authService: AuthService) {}
+    private readonly authService: AuthService,
+  ) {}
 
   @Public()
   @Post('register')
@@ -96,19 +99,36 @@ export class AuthController {
       .status(HttpStatusCode.Ok)
       .build();
   }
+  @UseGuards(AuthGuard)
+  @Patch('profile')
+  async updateProfile(
+    @CurrentUser('id') userId: number,
+    @Body() updateDto: UpdateProfileDto,
+  ) {
+    const result = await this.authService.updateProfile(userId, updateDto);
+
+    return Builder<SuccessResponse>()
+      .data(result)
+      .message(SuccessMessages.UPDATE_SUCCESSFULLY)
+      .status(HttpStatusCode.Ok)
+      .build();
+  }
 
   @Public()
   @Post('verify-account')
-  async verifyAccount(@Body() registerDto: RegisterDto,@Body('otp') otp: string) {
+  async verifyAccount(
+    @Body() registerDto: RegisterDto,
+    @Body('otp') otp: string,
+  ) {
     const result = await this.authService.verifyOtp(registerDto, otp);
-     return Builder<SuccessResponse>()
+    return Builder<SuccessResponse>()
       .data(result)
       .message(SuccessMessages.CREATE_SUCCESSFULLY)
       .status(HttpStatusCode.Ok)
       .build();
   }
 
-@Public()
+  @Public()
   @Post('forgot-password')
   async forgotPassword(@Body('email') email: string) {
     const result = await this.authService.forgotPassword(email);
@@ -126,7 +146,11 @@ export class AuthController {
     @Body('otp') otp: string,
     @Body('newPassword') newPassword: string,
   ) {
-    const result = await this.authService.resetPassword(email, otp, newPassword);
+    const result = await this.authService.resetPassword(
+      email,
+      otp,
+      newPassword,
+    );
     return Builder<SuccessResponse>()
       .data(result)
       .message(SuccessMessages.UPDATE_SUCCESSFULLY)
@@ -137,8 +161,7 @@ export class AuthController {
   @Public()
   @Get('google')
   @UseGuards(PassportAuthGuard('google'))
-  async googleAuth() {
-  }
+  async googleAuth() {}
   @Public()
   @Get('google/callback')
   @UseGuards(PassportAuthGuard('google'))
@@ -147,7 +170,7 @@ export class AuthController {
     const result = await this.authService.generateTokenGoogle(user, res);
 
     res.redirect(
-      `http://localhost:3000/login-success?token=${result.newAccessToken}`
+      `http://localhost:3000/login-success?token=${result.newAccessToken}`,
     );
   }
 }
