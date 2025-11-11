@@ -1,15 +1,30 @@
-import { NestFactory } from '@nestjs/core';
-import { ConfigService } from '@nestjs/config';
-const compression = require('compression');
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
-import { json } from 'express';
+import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { Logger } from '@nestjs/common';
+import { json } from 'express';
+import * as fs from 'fs';
+import * as path from 'path';
+import { ConfigService } from '@nestjs/config';
+import initSwagger from './utils/configs/innit-swagger';
 import { GlobalExceptionFilter } from './filters/global-exception.filter';
 import { ValidationPipe } from './filters/validation-pipe.filter';
-import { Logger } from '@nestjs/common';
+import { LoggerService } from './services/logger.service';
 
 async function bootstrap() {
+  const enableLogging = process.env.ENABLE_LOGGING === 'true' || true;
   let appOptions = {};
+
+  if (enableLogging) {
+    const logDir = path.join(process.cwd(), 'logs');
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
+    }
+
+    const customLogger = new LoggerService(new ConfigService());
+    appOptions = { logger: customLogger };
+  }
 
   const app = await NestFactory.create(AppModule, appOptions);
 
@@ -22,6 +37,7 @@ async function bootstrap() {
   app.use(compression());
   app.use(cookieParser());
 
+  // Configure body parser for large requests
   app.use(json({ limit: '50mb' }));
 
   app.setGlobalPrefix('ute-shop/api');
@@ -29,9 +45,12 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe());
   app.useGlobalFilters(new GlobalExceptionFilter());
 
-  const port = configService.get<number>('PORT') || 3000;
+  initSwagger(app);
 
+  const port = configService.get<number>('PORT') || 3009;
   await app.listen(port);
-  Logger.log(`Application is running on: http://localhost:${port}`);
+
+  const logger = new Logger('Bootstrap');
+  logger.log(`Server running port =====> ${port}`);
 }
 bootstrap();
