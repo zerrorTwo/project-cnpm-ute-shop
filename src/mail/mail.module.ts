@@ -1,4 +1,4 @@
-import { Module,Global } from '@nestjs/common';
+import { Module, Global } from '@nestjs/common';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { MailService } from '../services/mail.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -23,7 +23,7 @@ import { RedisModule } from 'src/redis/redis.module';
           from: `"No Reply" <${configService.get('MAIL_USER')}>`,
         },
       }),
-    }),    
+    }),
     RedisModule,
   ],
   providers: [MailService],
