@@ -11,7 +11,12 @@ import {
   generateRefreshToken,
   verifyRefreshToken,
 } from '../utils/auth/common';
-import { RegisterDto, LoginDto, UpdateProfileDto } from '../dtos/auth.dto';
+import {
+  RegisterDto,
+  LoginDto,
+  UpdateProfileDto,
+  VerifyAccountDto,
+} from '../dtos/auth.dto';
 import type { Response } from 'express';
 import { ErrorMessages } from '../constants/messages';
 import { UserRepository } from '../repositories/user.repository';
@@ -33,6 +38,7 @@ export class AuthService {
       `Register request: email=${email}, fullName=${fullName}`,
       'AuthService',
     );
+
     const existingUser = await this.userRepository.findByEmail(email);
     if (existingUser) {
       this.logger.warn(`Email đã tồn tại: ${email}`, 'AuthService');
@@ -43,38 +49,42 @@ export class AuthService {
     return { message: 'OTP đã được gửi tới email của bạn.' };
   }
 
-  async verifyOtp(registerDto: RegisterDto, otp: string) {
-    this.logger.log(
-      `Verify OTP: email=${registerDto.email}, otp=${otp}`,
-      'AuthService',
-    );
-    const isValiedOTP = this.mailService.validateOtp(
-      'register',
-      registerDto.email,
-      otp,
-    );
-    if (!isValiedOTP) {
-      this.logger.warn(
-        `OTP không hợp lệ hoặc hết hạn: email=${registerDto.email}, otp=${otp}`,
-        'AuthService',
-      );
-      throw new BadRequestException('OTP đã hết hạn hoặc không tồn tại');
+  async verifyOtp(verifyAccountDto: VerifyAccountDto) {
+    const { email, password, fullName, otp } = verifyAccountDto;
+
+    this.logger.log(`Verify OTP: email=${email}, otp=${otp}`, 'AuthService');
+
+    try {
+      await this.mailService.validateOtp('register', email, otp);
+    } catch (error) {
+      // Re-throw the validation error from mail service
+      throw error;
     }
-    const hashedPassword = await hashPassword(registerDto.password);
+
+    const hashedPassword = await hashPassword(password);
     const user = await this.userRepository.create({
-      email: registerDto.email,
+      email,
       password: hashedPassword,
-      fullName: registerDto.fullName,
+      fullName,
     });
     this.logger.log(
       `Tạo tài khoản thành công: email=${user.email}, id=${user.id}`,
       'AuthService',
     );
+
+    // Generate tokens for auto-login after verification
+    const payload = { id: user.id, email: user.email };
+    const accessToken = generateAccessToken(payload);
+    const refreshToken = generateRefreshToken(payload);
+
     return {
-      id: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      message: 'Xác minh OTP thành công. Tài khoản đã được tạo.',
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+      },
+      accessToken,
+      refreshToken,
     };
   }
   async login(loginDto: LoginDto, response: Response) {
@@ -283,7 +293,7 @@ export class AuthService {
       },
     };
   }
-  
+
   async updateProfile(userId: number, updateDto: UpdateProfileDto) {
     const user = await this.userRepository.findById(userId);
 

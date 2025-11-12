@@ -5,7 +5,6 @@ import {
   HttpCode,
   HttpStatus,
   Patch,
-  Put,
   Post,
   Req,
   Res,
@@ -24,19 +23,12 @@ import type { Request, Response } from 'express';
 
 import { AuthGuard as PassportAuthGuard } from '@nestjs/passport';
 import { SuccessMessages } from '../../constants/messages';
-import { LoginDto, RegisterDto } from '../../dtos/auth.dto';
+import { LoginDto, RegisterDto, VerifyAccountDto } from '../../dtos/auth.dto';
 import { SuccessResponse } from '../../dtos/response.dto';
 import { AuthService } from '../../services/auth.service';
 import { MailService } from '../../services/mail.service';
 
-import { RegisterDto, LoginDto, UpdateProfileDto } from '../../dtos/auth.dto';
-import { SuccessResponse } from '../../dtos/response.dto';
-import { SuccessMessages } from '../../constants/messages';
-import { AuthGuard } from '../../utils/auth/auth.guard';
-import { Public } from '../../utils/auth/public.decorator';
-import { CurrentUser } from '../../utils/decorators/current-user.decorator';
-import { AuthGuard as PassportAuthGuard } from '@nestjs/passport';
-
+import { UpdateProfileDto } from '../../dtos/auth.dto';
 import { AuthGuard } from '../../utils/auth/auth.guard';
 import { Public } from '../../utils/auth/public.decorator';
 import { CurrentUser } from '../../utils/decorators/current-user.decorator';
@@ -177,14 +169,14 @@ export class AuthController {
 
   @Public()
   @Post('verify-account')
-
   @ApiOperation({ summary: 'Xác thực tài khoản bằng OTP' })
   @ApiBody({
     schema: {
       properties: {
-        otp: { type: 'string' },
         email: { type: 'string' },
         password: { type: 'string' },
+        fullName: { type: 'string' },
+        otp: { type: 'string' },
       },
     },
   })
@@ -193,16 +185,17 @@ export class AuthController {
     description: 'Xác thực thành công',
     type: SuccessResponse,
   })
-  async verifyAccount(
-    @Body() registerDto: RegisterDto,
-    @Body('otp') otp: string,
-  ) {
-    const result = await this.authService.verifyOtp(registerDto, otp);
-    return Builder<SuccessResponse>()
-      .data(result)
-      .message(SuccessMessages.CREATE_SUCCESSFULLY)
-      .status(HttpStatusCode.Ok)
-      .build();
+  async verifyAccount(@Body() verifyAccountDto: VerifyAccountDto) {
+    try {
+      const result = await this.authService.verifyOtp(verifyAccountDto);
+      return Builder<SuccessResponse>()
+        .data(result)
+        .message(SuccessMessages.CREATE_SUCCESSFULLY)
+        .status(HttpStatusCode.Ok)
+        .build();
+    } catch (error) {
+      throw error;
+    }
   }
 
   @Public()
@@ -261,7 +254,6 @@ export class AuthController {
   @Get('google')
   @ApiOperation({ summary: 'Google OAuth2 login' })
   @UseGuards(PassportAuthGuard('google'))
-
   async googleAuth() {}
   @Public()
   @Get('google/callback')

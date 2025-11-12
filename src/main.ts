@@ -30,10 +30,27 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
 
+  // CORS Configuration
   app.enableCors({
-    origin: true,
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:5173',
+      'http://localhost:5174',
+    ],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Accept',
+      'Origin',
+    ],
+    exposedHeaders: ['Authorization'],
     credentials: true,
+    maxAge: 3600,
   });
+
   app.use(compression());
   app.use(cookieParser());
 
