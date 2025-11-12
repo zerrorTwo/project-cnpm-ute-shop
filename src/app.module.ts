@@ -7,6 +7,8 @@ import { AdminModule } from './controllers/admin/admin.module';
 import { ClientModule } from './controllers/client/client.module';
 import { AuthGuard } from './utils/auth/auth.guard';
 import { User } from './entities/user.entity';
+import { LoggerMiddleware } from './middlewares/logger.middleware';
+import { LoggerService } from './services/logger.service';
 
 @Module({
   imports: [
@@ -43,6 +45,7 @@ import { User } from './entities/user.entity';
     ]),
   ],
   providers: [
+    LoggerService,
     {
       provide: APP_GUARD,
       useClass: AuthGuard,
@@ -51,6 +54,7 @@ import { User } from './entities/user.entity';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
+    consumer.apply(LoggerMiddleware).forRoutes('*');
     // middleware nếu cần
   }
 }
