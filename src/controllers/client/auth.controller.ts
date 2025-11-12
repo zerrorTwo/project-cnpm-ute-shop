@@ -4,6 +4,8 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Patch,
+  Put,
   Post,
   Req,
   Res,
@@ -26,6 +28,15 @@ import { LoginDto, RegisterDto } from '../../dtos/auth.dto';
 import { SuccessResponse } from '../../dtos/response.dto';
 import { AuthService } from '../../services/auth.service';
 import { MailService } from '../../services/mail.service';
+
+import { RegisterDto, LoginDto, UpdateProfileDto } from '../../dtos/auth.dto';
+import { SuccessResponse } from '../../dtos/response.dto';
+import { SuccessMessages } from '../../constants/messages';
+import { AuthGuard } from '../../utils/auth/auth.guard';
+import { Public } from '../../utils/auth/public.decorator';
+import { CurrentUser } from '../../utils/decorators/current-user.decorator';
+import { AuthGuard as PassportAuthGuard } from '@nestjs/passport';
+
 import { AuthGuard } from '../../utils/auth/auth.guard';
 import { Public } from '../../utils/auth/public.decorator';
 import { CurrentUser } from '../../utils/decorators/current-user.decorator';
@@ -149,9 +160,24 @@ export class AuthController {
       .status(HttpStatusCode.Ok)
       .build();
   }
+  @UseGuards(AuthGuard)
+  @Patch('profile')
+  async updateProfile(
+    @CurrentUser('id') userId: number,
+    @Body() updateDto: UpdateProfileDto,
+  ) {
+    const result = await this.authService.updateProfile(userId, updateDto);
+
+    return Builder<SuccessResponse>()
+      .data(result)
+      .message(SuccessMessages.UPDATE_SUCCESSFULLY)
+      .status(HttpStatusCode.Ok)
+      .build();
+  }
 
   @Public()
   @Post('verify-account')
+
   @ApiOperation({ summary: 'Xác thực tài khoản bằng OTP' })
   @ApiBody({
     schema: {
@@ -235,10 +261,8 @@ export class AuthController {
   @Get('google')
   @ApiOperation({ summary: 'Google OAuth2 login' })
   @UseGuards(PassportAuthGuard('google'))
-  async googleAuth() {
-    return;
-  }
 
+  async googleAuth() {}
   @Public()
   @Get('google/callback')
   @ApiOperation({ summary: 'Google OAuth2 callback' })

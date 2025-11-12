@@ -11,7 +11,7 @@ import {
   generateRefreshToken,
   verifyRefreshToken,
 } from '../utils/auth/common';
-import { RegisterDto, LoginDto } from '../dtos/auth.dto';
+import { RegisterDto, LoginDto, UpdateProfileDto } from '../dtos/auth.dto';
 import type { Response } from 'express';
 import { ErrorMessages } from '../constants/messages';
 import { UserRepository } from '../repositories/user.repository';
@@ -28,6 +28,7 @@ export class AuthService {
 
   async register(registerDto: RegisterDto) {
     const { email, password, fullName } = registerDto;
+
     this.logger.log(
       `Register request: email=${email}, fullName=${fullName}`,
       'AuthService',
@@ -268,6 +269,7 @@ export class AuthService {
       sameSite: 'strict',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
+
     this.logger.log(
       `Google login thành công: email=${email}, id=${user.id}`,
       'AuthService',
@@ -279,6 +281,26 @@ export class AuthService {
         email: user.email,
         fullName: user.fullName,
       },
+    };
+  }
+  
+  async updateProfile(userId: number, updateDto: UpdateProfileDto) {
+    const user = await this.userRepository.findById(userId);
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    const updated = await this.userRepository.update(userId, updateDto);
+
+    if (!updated) {
+      throw new BadRequestException('Failed to update profile');
+    }
+
+    return {
+      id: updated.id,
+      email: updated.email,
+      fullName: updated.fullName,
+      updatedAt: updated.updatedAt,
     };
   }
 }
