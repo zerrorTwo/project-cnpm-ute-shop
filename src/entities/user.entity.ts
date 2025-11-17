@@ -2,9 +2,13 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
+  OneToMany,
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Bill } from '../entities/bill.entity';
+import { Comment } from '../entities/comment.entity';
+import { Cart } from '../entities/cart.entity';
 
 @Entity('users')
 export class User {
@@ -20,11 +24,18 @@ export class User {
   @Column({ nullable: true })
   fullName: string;
 
+  @OneToMany(() => Bill, (bill) => bill.customer)
+  bills: Bill[];
+
   @CreateDateColumn()
   createdAt: Date;
 
   @UpdateDateColumn()
   updatedAt: Date;
 
+  @OneToMany(() => Comment, (comment) => comment.customer)
+  comments: Comment[];
 
+  @OneToMany(() => Cart, (cart) => cart.customer)
+  carts: Cart[];
 }
