@@ -30,6 +30,7 @@ export class ProductRepository {
       .leftJoin('product.lineItems', 'li')
       .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('product.brand', 'brand')
+      .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.discountDetail', 'discountDetail')
       .addSelect('COALESCE(SUM(li.quantity), 0)', 'sold')
       .groupBy('product.id')
@@ -49,14 +50,12 @@ export class ProductRepository {
   async findMostViewed(limit = 8): Promise<Product[]> {
     const qb = this.repository
       .createQueryBuilder('product')
-      .leftJoin('product.comments', 'c')
       .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('product.brand', 'brand')
+      .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.discountDetail', 'discountDetail')
-      .addSelect('COALESCE(COUNT(c.id), 0)', 'views')
-      .groupBy('product.id')
-      .orderBy('views', 'DESC')
-      .limit(limit);
+      .orderBy('product.views', 'DESC')
+      .take(limit);
 
     const { entities } = await qb.getRawAndEntities();
     return entities;
@@ -71,6 +70,7 @@ export class ProductRepository {
       .leftJoinAndSelect('product.discountDetail', 'discountDetail')
       .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('product.brand', 'brand')
+      .leftJoinAndSelect('product.category', 'category')
       .orderBy('discountDetail.percentage', 'DESC')
       .limit(limit)
       .getMany();
@@ -82,7 +82,7 @@ export class ProductRepository {
   async findById(id: number): Promise<Product | null> {
     return this.repository.findOne({
       where: { id },
-      relations: ['images', 'brand'],
+      relations: ['images', 'brand', 'category', 'discountDetail'],
     });
   }
 }

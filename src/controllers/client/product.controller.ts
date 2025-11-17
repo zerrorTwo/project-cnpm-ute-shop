@@ -36,7 +36,7 @@ export class ProductController {
   @Public()
   @Get('most-viewed')
   async getMostViewed() {
-    const data = await this.productService.getMostViewed(8);
+    const data = await this.productService.getMostViewed(4);
 
     return Builder<SuccessResponse>()
       .data(data)
