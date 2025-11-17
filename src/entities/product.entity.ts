@@ -42,6 +42,9 @@ export class Product {
   @Column()
   unitPrice: number;
 
+  @Column({ name: 'views' })
+  views: number;
+
   @Column({ type: 'enum', enum: EProductStatus })
   productStatus: EProductStatus;
 
