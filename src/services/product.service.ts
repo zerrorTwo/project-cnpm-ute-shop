@@ -37,4 +37,28 @@ export class ProductService {
 
     return { newest, bestSelling, mostViewed, topDiscount };
   }
+
+  async getProductById(id: number): Promise<Product | null> {
+    return this.productRepository.findById(id);
+  }
+
+  async getProductBySlug(slug: string): Promise<Product | null> {
+    return this.productRepository.findBySlug(slug);
+  }
+
+  async filterProducts(
+    page: number,
+    limit: number,
+    filters: {
+      search?: string;
+      categoryId?: number;
+      brandId?: number;
+      minPrice?: number;
+      maxPrice?: number;
+      sortBy?: string;
+      sortOrder?: 'ASC' | 'DESC';
+    },
+  ): Promise<{ data: Product[]; total: number }> {
+    return this.productRepository.findWithFilter(page, limit, filters);
+  }
 }

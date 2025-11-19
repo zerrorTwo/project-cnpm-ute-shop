@@ -94,4 +94,97 @@ export class ProductRepository {
       relations: ['images', 'brand', 'category', 'discountDetail'],
     });
   }
+
+  /**
+   * Tìm product theo slug
+   */
+  async findBySlug(slug: string): Promise<Product | null> {
+    return this.repository.findOne({
+      where: { slug },
+      relations: ['images', 'brand', 'category', 'discountDetail'],
+    });
+  }
+
+  /**
+   * Filter và phân trang sản phẩm
+   */
+  async findWithFilter(
+    page: number,
+    limit: number,
+    filters: {
+      search?: string;
+      categoryId?: number;
+      brandId?: number;
+      minPrice?: number;
+      maxPrice?: number;
+      sortBy?: string;
+      sortOrder?: 'ASC' | 'DESC';
+    },
+  ): Promise<{ data: Product[]; total: number }> {
+    const qb = this.repository
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.images', 'images')
+      .leftJoinAndSelect('product.brand', 'brand')
+      .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('product.discountDetail', 'discountDetail');
+
+    // Apply filters
+    if (filters.search) {
+      qb.andWhere('product.productName LIKE :search', {
+        search: `%${filters.search}%`,
+      });
+    }
+
+    if (filters.categoryId) {
+      qb.andWhere('product.category.id = :categoryId', {
+        categoryId: filters.categoryId,
+      });
+    }
+
+    if (filters.brandId) {
+      qb.andWhere('product.brand.id = :brandId', {
+        brandId: filters.brandId,
+      });
+    }
+
+    if (filters.minPrice !== undefined) {
+      qb.andWhere('product.unitPrice >= :minPrice', {
+        minPrice: filters.minPrice,
+      });
+    }
+
+    if (filters.maxPrice !== undefined) {
+      qb.andWhere('product.unitPrice <= :maxPrice', {
+        maxPrice: filters.maxPrice,
+      });
+    }
+
+    // Apply sorting
+    if (filters.sortBy) {
+      const sortField =
+        filters.sortBy === 'price'
+          ? 'product.unitPrice'
+          : filters.sortBy === 'name'
+            ? 'product.productName'
+            : filters.sortBy === 'views'
+              ? 'product.views'
+              : filters.sortBy === 'rating'
+                ? 'product.ratingAvg'
+                : 'product.id';
+
+      qb.orderBy(sortField, filters.sortOrder || 'DESC');
+    } else {
+      qb.orderBy('product.id', 'DESC');
+    }
+
+    // Get total count
+    const total = await qb.getCount();
+
+    // Apply pagination
+    qb.skip((page - 1) * limit).take(limit);
+
+    const data = await qb.getMany();
+
+    return { data, total };
+  }
 }
