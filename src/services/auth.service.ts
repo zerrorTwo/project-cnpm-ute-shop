@@ -199,6 +199,8 @@ export class AuthService {
       id: user.id,
       email: user.email,
       fullName: user.fullName,
+      phone: user.phone,
+      avatar: user.avatar,
       createdAt: user.createdAt,
     };
   }
@@ -300,6 +302,16 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
+
+    if (updateDto.email && updateDto.email !== user.email) {
+      const existingUser = await this.userRepository.findByEmail(
+        updateDto.email,
+      );
+      if (existingUser) {
+        throw new BadRequestException('Email đã được sử dụng');
+      }
+    }
+
     const updated = await this.userRepository.update(userId, updateDto);
 
     if (!updated) {
@@ -310,6 +322,8 @@ export class AuthService {
       id: updated.id,
       email: updated.email,
       fullName: updated.fullName,
+      phone: updated.phone,
+      avatar: updated.avatar,
       updatedAt: updated.updatedAt,
     };
   }

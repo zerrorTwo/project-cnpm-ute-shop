@@ -28,7 +28,6 @@ export class ProductRepository {
     const qb = this.repository
       .createQueryBuilder('product')
       .leftJoin('product.lineItems', 'li')
-      .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('product.brand', 'brand')
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.discountDetail', 'discountDetail')
@@ -37,8 +36,18 @@ export class ProductRepository {
       .orderBy('sold', 'DESC')
       .limit(limit);
 
-    const { entities } = await qb.getRawAndEntities();
-    return entities;
+    const products = await qb.getMany();
+
+    // Load images separately to avoid GROUP BY issues
+    for (const product of products) {
+      product.images = await this.repository
+        .createQueryBuilder('p')
+        .relation(Product, 'images')
+        .of(product.id)
+        .loadMany();
+    }
+
+    return products;
   }
 
   /**

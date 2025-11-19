@@ -24,6 +24,12 @@ export class User {
   @Column({ nullable: true })
   fullName: string;
 
+  @Column({ nullable: true })
+  phone: string;
+
+  @Column({ nullable: true })
+  avatar: string;
+
   @OneToMany(() => Bill, (bill) => bill.customer)
   bills: Bill[];
 

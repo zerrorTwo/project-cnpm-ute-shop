@@ -33,9 +33,22 @@ export class LoginDto {
 }
 export class UpdateProfileDto {
   @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @IsOptional()
   @IsString()
   @MaxLength(100)
   fullName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  avatar?: string;
 }
 
 export class VerifyAccountDto {
