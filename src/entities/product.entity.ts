@@ -27,6 +27,9 @@ export class Product {
   @Column()
   productName: string;
 
+  @Column({ unique: true })
+  slug: string;
+
   @Column({ type: 'longtext', nullable: true })
   description: string;
 
@@ -47,6 +50,9 @@ export class Product {
 
   @Column({ type: 'enum', enum: EProductStatus })
   productStatus: EProductStatus;
+
+  @Column({ default: 0 })
+  quantityStock: number;
 
   @ManyToOne(() => Brand, (brand) => brand.products)
   brand: Brand;
