@@ -303,9 +303,10 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
-    // Check if email is being updated and if it's already taken
     if (updateDto.email && updateDto.email !== user.email) {
-      const existingUser = await this.userRepository.findByEmail(updateDto.email);
+      const existingUser = await this.userRepository.findByEmail(
+        updateDto.email,
+      );
       if (existingUser) {
         throw new BadRequestException('Email đã được sử dụng');
       }
