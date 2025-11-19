@@ -9,6 +9,7 @@ import { LineItem } from 'src/entities/line-item.entity';
 import { DiscountDetail } from 'src/entities/discount-detail.entity';
 import { Image } from 'src/entities/image.entity';
 import { Comment } from 'src/entities/comment.entity';
+import { Bill } from 'src/entities/bill.entity';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { Comment } from 'src/entities/comment.entity';
       DiscountDetail,
       Image,
       Comment,
+      Bill,
     ]),
   ],
   controllers: [...Controllers],

@@ -31,7 +31,7 @@ export class Bill {
   id: number;
 
   @Column()
-  totalPrice: number;
+  total: number;
 
   @Column()
   discount: number;
@@ -43,19 +43,19 @@ export class Bill {
   status: EBillStatus;
 
   @Column()
-  orderNumber: number;
+  billCode: number;
 
-  // Bill – Customer
+  @Column()
+  orderId: number;
+
   @ManyToOne(() => User, (user) => user.bills, { nullable: false })
-  @JoinColumn({ name: 'customer_id' })
+  @JoinColumn({ name: 'user_id' })
   customer: User;
 
-  // Bill – Payment
   @OneToOne(() => Payment)
   @JoinColumn({ name: 'payment_id' })
   payment: Payment;
 
-  // Bill – LineItems
   @OneToMany(() => LineItem, (item) => item.bill, { cascade: true })
   items: LineItem[];
 
