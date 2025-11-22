@@ -61,6 +61,10 @@ export class ProductService {
     return this.productRepository.findById(id);
   }
 
+  async getDetailProductById(id: number): Promise<Product | null> {
+    return this.productRepository.findDetailById(id);
+  }
+
   async getProductBySlug(slug: string): Promise<Product | null> {
     return this.productRepository.findBySlug(slug);
   }
@@ -220,5 +224,34 @@ export class ProductService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  async inactiveProduct(id: number, limit: number = 10): Promise<string> {
+    const product = await this.productRepository.findById(id);
+
+    if (!product) {
+      throw new Error(`Sản phẩm với ID ${id} không tồn tại.`);
+    }
+    product.displayStatus = !product.displayStatus;
+    await this.productRepository.repository.save(product);
+    return 'Success';
+  }
+
+  async findAllProductWithPaging(
+    page: number,
+    limit: number,
+    filters: {
+      search?: string;
+      categoryId?: number;
+      brandId?: number;
+      sortBy?: string;
+      sortOrder?: 'ASC' | 'DESC';
+    },
+  ): Promise<{ data: Product[]; total: number }> {
+    return this.productRepository.findAllProductWithPaging(
+      page,
+      limit,
+      filters,
+    );
   }
 }

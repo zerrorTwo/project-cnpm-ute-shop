@@ -16,6 +16,7 @@ export class ProductRepository {
   async findNewest(limit = 8): Promise<Product[]> {
     return this.repository.find({
       take: limit,
+      where: { displayStatus: true },
       order: { id: 'DESC' },
       relations: ['images', 'brand', 'category', 'discountDetail'],
     });
@@ -31,6 +32,7 @@ export class ProductRepository {
       .leftJoinAndSelect('product.brand', 'brand')
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.discountDetail', 'discountDetail')
+      .where('product.displayStatus = :status', { status: true })
       .addSelect('COALESCE(SUM(li.quantity), 0)', 'sold')
       .groupBy('product.id')
       .orderBy('sold', 'DESC')
@@ -63,6 +65,7 @@ export class ProductRepository {
       .leftJoinAndSelect('product.brand', 'brand')
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.discountDetail', 'discountDetail')
+      .where('product.displayStatus = :status', { status: true })
       .orderBy('product.views', 'DESC')
       .take(limit);
 
@@ -80,6 +83,7 @@ export class ProductRepository {
       .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('product.brand', 'brand')
       .leftJoinAndSelect('product.category', 'category')
+      .where('product.displayStatus = :status', { status: true })
       .orderBy('discountDetail.percentage', 'DESC')
       .limit(limit)
       .getMany();
@@ -92,6 +96,20 @@ export class ProductRepository {
     return this.repository.findOne({
       where: { id },
       relations: ['images', 'brand', 'category', 'discountDetail'],
+    });
+  }
+
+  async findDetailById(id: number): Promise<Product | null> {
+    return this.repository.findOne({
+      where: { id },
+      relations: [
+        'images',
+        'brand',
+        'category',
+        'discountDetail',
+        'configurations',
+        'configurations.otherConfigs',
+      ],
     });
   }
 
@@ -108,6 +126,46 @@ export class ProductRepository {
   /**
    * Filter và phân trang sản phẩm
    */
+  async findAllProductWithPaging(
+    page: number,
+    limit: number,
+    filters: {
+      search?: string;
+      sortOrder?: 'ASC' | 'DESC';
+    },
+  ): Promise<{ data: Product[]; total: number }> {
+    const qb = this.repository
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.images', 'images')
+      .leftJoinAndSelect('product.brand', 'brand')
+      .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('product.discountDetail', 'discountDetail');
+
+    if (filters.search) {
+      qb.andWhere('product.productName LIKE :search', {
+        search: `%${filters.search}%`,
+      });
+      qb.andWhere('product.brand.brandName LIKE :search', {
+        search: `%${filters.search}%`,
+      });
+      qb.andWhere('product.category.categoryName LIKE :search', {
+        search: `%${filters.search}%`,
+      });
+    }
+
+    qb.orderBy('product.id', filters.sortOrder || 'DESC');
+
+    // Get total count
+    const total = await qb.getCount();
+
+    // Apply pagination
+    qb.skip((page - 1) * limit).take(limit);
+
+    const data = await qb.getMany();
+
+    return { data, total };
+  }
+
   async findWithFilter(
     page: number,
     limit: number,
@@ -126,8 +184,8 @@ export class ProductRepository {
       .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('product.brand', 'brand')
       .leftJoinAndSelect('product.category', 'category')
-      .leftJoinAndSelect('product.discountDetail', 'discountDetail');
-
+      .leftJoinAndSelect('product.discountDetail', 'discountDetail')
+      .where('product.displayStatus = :status', { status: true });
     // Apply filters
     if (filters.search) {
       qb.andWhere('product.productName LIKE :search', {
