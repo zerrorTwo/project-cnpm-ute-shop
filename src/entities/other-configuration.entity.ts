@@ -8,12 +8,9 @@ import {
 import { Configuration } from '../entities/configuration.entity';
 
 @Entity('other_configurations')
-export class OtherConfiguration {
+export class DetailConfiguration {
   @PrimaryGeneratedColumn()
   id: number;
-
-  @Column()
-  name: string;
 
   @Column()
   value: string;

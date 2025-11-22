@@ -7,7 +7,7 @@ import { Product } from 'src/entities/product.entity';
 export class ProductRepository {
   constructor(
     @InjectRepository(Product)
-    private readonly repository: Repository<Product>,
+    public readonly repository: Repository<Product>,
   ) {}
 
   /**

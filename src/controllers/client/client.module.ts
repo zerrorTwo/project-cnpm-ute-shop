@@ -14,6 +14,10 @@ import { DiscountDetail } from 'src/entities/discount-detail.entity';
 import { Image } from 'src/entities/image.entity';
 import { Comment } from 'src/entities/comment.entity';
 import { Bill } from 'src/entities/bill.entity';
+import { Category } from 'src/entities/category.entity';
+import { Brand } from 'src/entities/brand.entity';
+import { Configuration } from 'src/entities/configuration.entity';
+import { DetailConfiguration } from 'src/entities/other-configuration.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -24,6 +28,10 @@ import { Bill } from 'src/entities/bill.entity';
       Image,
       Comment,
       Bill,
+      Brand,
+      Category,
+      Configuration,
+      DetailConfiguration,
     ]),
     MailModule,
   ],

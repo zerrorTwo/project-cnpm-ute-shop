@@ -1,3 +1,5 @@
+import * as dotenv from 'dotenv';
+dotenv.config();
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import { NestFactory } from '@nestjs/core';
