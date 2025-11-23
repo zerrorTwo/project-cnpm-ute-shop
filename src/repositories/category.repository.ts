@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { CategoryDto } from 'src/dtos/response/category.dto';
 import { Category } from 'src/entities/category.entity'; // Thay thế bằng đường dẫn thực tế của bạn
 import { Repository } from 'typeorm';
 
@@ -16,6 +17,12 @@ export class CategoryRepository {
   async findById(id: number): Promise<Category | null> {
     return this.repository.findOne({
       where: { id },
+    });
+  }
+
+  async findOne(key: any, value: any): Promise<Category | null> {
+    return this.repository.findOne({
+      where: { [key]: value },
     });
   }
 
@@ -48,7 +55,22 @@ export class CategoryRepository {
   /**
    * Lấy tất cả Category (Ví dụ thêm)
    */
-  async findAll(): Promise<Category[]> {
-    return this.repository.find();
+  async findAll(): Promise<CategoryDto[]> {
+    const rows = await this.repository
+      .createQueryBuilder('category')
+      .leftJoin('category.products', 'product')
+      .select([
+        'category.id AS categoryId',
+        'category.categoryName AS categoryName',
+        'COUNT(product.id) AS quantityProduct',
+      ])
+      .groupBy('category.id')
+      .getRawMany();
+
+    return rows.map((row) => ({
+      categoryId: Number(row.categoryId),
+      categoryName: row.categoryName,
+      quantityProduct: Number(row.quantityProduct),
+    }));
   }
 }

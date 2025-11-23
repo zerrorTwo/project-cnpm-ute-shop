@@ -8,6 +8,7 @@ import {
   Param,
   Delete,
   Query,
+  Put,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { CreateProductDto } from '../../dtos/request/addProduct.dto';
@@ -45,12 +46,45 @@ export class ProductController {
       configurations: configurations,
       images: imageUrls,
     });
-
-    return {
-      message: 'Tạo sản phẩm thành công',
-      product,
-    };
+    return Builder<SuccessResponse>()
+      .data({
+        product,
+      })
+      .message(SuccessMessages.GET_SUCCESSFULLY)
+      .status(HttpStatusCode.Ok)
+      .build();
   }
+
+  @Put()
+  @Public()
+  @UseInterceptors(
+    FilesInterceptor('images', 10, {
+      storage: CloudinaryImageStorage,
+    }),
+  )
+  async updateProduct(
+    @Body() body: any,
+    @UploadedFiles() files: Express.Multer.File[],
+  ) {
+    const configurations = body.configurations
+      ? JSON.parse(body.configurations)
+      : [];
+    const imageUrls = files.map((file) => file.path);
+
+    const product = await this.productService.updateProduct({
+      ...body,
+      configurations: configurations,
+      images: imageUrls,
+    });
+    return Builder<SuccessResponse>()
+      .data({
+        product,
+      })
+      .message(SuccessMessages.GET_SUCCESSFULLY)
+      .status(HttpStatusCode.Ok)
+      .build();
+  }
+
 
   @Get(':id')
   @Public()
@@ -58,16 +92,22 @@ export class ProductController {
     const product = await this.productService.getDetailProductById(id);
 
     if (!product) {
-      return {
-        message: 'Sản phẩm không tồn tại',
-        product: null,
-      };
+      return Builder<SuccessResponse>()
+        .data({
+          product,
+        })
+        .message('Không tìm thấy sản phẩm')
+        .status(HttpStatusCode.Ok)
+        .build();
     }
 
-    return {
-      message: 'Lấy thông tin sản phẩm thành công',
-      product,
-    };
+    return Builder<SuccessResponse>()
+      .data({
+        product,
+      })
+      .message(SuccessMessages.GET_SUCCESSFULLY)
+      .status(HttpStatusCode.Ok)
+      .build();
   }
 
   @Delete(':id')
@@ -81,18 +121,14 @@ export class ProductController {
   @Public()
   @Get()
   async filterProducts(@Query() filterDto: FilterProductDto) {
-    const { page = 1, limit, ...filters } = filterDto;
-    let finalLimit = 10;
-    if (limit) {
-      finalLimit = limit;
-    }
+    const { page = 1, limit = 12, ...filters } = filterDto;
     const { data, total } = await this.productService.findAllProductWithPaging(
       page,
-      finalLimit,
+      limit,
       filters,
     );
 
-    const totalPages = Math.ceil(total / finalLimit);
+    const totalPages = Math.ceil(total / limit);
 
     return Builder<SuccessResponse>()
       .data({

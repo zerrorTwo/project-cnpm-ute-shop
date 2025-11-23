@@ -1,6 +1,7 @@
 import { EProductStatus } from 'src/entities/product.entity';
 
 export class CreateProductDto {
+  productId?: number;
   productName: string;
   brandId: number;
   categoryId: number;
@@ -10,6 +11,7 @@ export class CreateProductDto {
   productStatus: EProductStatus;
   quantityStock: number;
   images: string[];
+  oldImages: string[];
   configurations?: ConfigurationProduct[];
 }
 

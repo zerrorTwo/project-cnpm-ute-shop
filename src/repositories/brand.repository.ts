@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { BrandDto } from 'src/dtos/response/brand.dto';
 import { Brand } from 'src/entities/brand.entity';
 import { Repository } from 'typeorm';
 
@@ -19,6 +20,12 @@ export class BrandRepository {
     });
   }
 
+  async findOne(key: any, value: any): Promise<Brand | null> {
+    return this.repository.findOne({
+      where: { [key]: value },
+    });
+  }
+
   async create(data: Partial<Brand>): Promise<Brand> {
     const brand = this.repository.create(data);
     return this.repository.save(brand);
@@ -33,7 +40,22 @@ export class BrandRepository {
     const result = await this.repository.delete(id);
     return (result.affected ?? 0) > 0;
   }
-  async findAll(): Promise<Brand[]> {
-      return this.repository.find();
-    }
+  async findAll(): Promise<BrandDto[]> {
+    const rows = await this.repository
+      .createQueryBuilder('brand')
+      .leftJoin('brand.products', 'product')
+      .select([
+        'brand.id AS brandId',
+        'brand.brandName AS brandName',
+        'COUNT(product.id) AS quantityProduct',
+      ])
+      .groupBy('brand.id')
+      .getRawMany();
+
+    return rows.map((row) => ({
+      brandId: Number(row.brandId),
+      brandName: row.brandName,
+      quantityProduct: Number(row.quantityProduct),
+    }));
+  }
 }

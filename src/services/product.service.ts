@@ -254,4 +254,184 @@ export class ProductService {
       filters,
     );
   }
+
+  async updateProduct(payload: CreateProductDto): Promise<Product> {
+    const {
+      productId,
+      productName,
+      brandId,
+      categoryId,
+      oldImages,
+      images,
+      configurations,
+      ...productData
+    } = payload;
+
+    const queryRunner =
+      this.productRepository.repository.manager.connection.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const product = await queryRunner.manager.findOne(Product, {
+        where: { id: productId },
+        relations: [
+          'brand',
+          'category',
+          'images',
+          'configurations',
+          'configurations.otherConfigs',
+        ],
+      });
+
+      if (!product) {
+        throw new InternalServerErrorException('Sản phẩm không tồn tại');
+      }
+
+      let slug = product.slug;
+      if (productName && productName !== product.productName) {
+        slug = this.generateSlug(productName);
+
+        const existed = await queryRunner.manager.findOne(Product, {
+          where: { slug },
+        });
+
+        if (existed && existed.id !== productId) {
+          throw new InternalServerErrorException(
+            'Tên sản phẩm đã tồn tại, vui lòng chọn tên khác.',
+          );
+        }
+      }
+
+      const brand = await queryRunner.manager.findOne(Brand, {
+        where: { id: brandId },
+      });
+
+      const category = await queryRunner.manager.findOne(Category, {
+        where: { id: categoryId },
+      });
+
+      if (!brand || !category) {
+        throw new InternalServerErrorException(
+          'Brand hoặc Category không tồn tại.',
+        );
+      }
+
+      queryRunner.manager.merge(Product, product, {
+        ...productData,
+        productName,
+        slug,
+        brand,
+        category,
+      });
+
+      const savedProduct = await queryRunner.manager.save(product);
+
+      if (images || oldImages) {
+        const existingImages = await queryRunner.manager.find(Image, {
+          where: { product: { id: productId } },
+        });
+
+        const imagesToKeep = existingImages.filter((img) =>
+          oldImages.includes(img.url),
+        );
+
+        const imagesToDelete = existingImages.filter(
+          (img) => !oldImages.includes(img.url),
+        );
+
+        if (imagesToDelete.length > 0) {
+          const idsToDelete = imagesToDelete.map((img) => img.id);
+          await queryRunner.manager.delete(Image, idsToDelete);
+        }
+
+        let newImageEntities: Image[] = [];
+
+        if (images && images.length > 0) {
+          newImageEntities = images.map((url) =>
+            queryRunner.manager.create(Image, { url, product: savedProduct }),
+          );
+
+          await queryRunner.manager.save(newImageEntities);
+        }
+
+        savedProduct.images = [...imagesToKeep, ...newImageEntities];
+      }
+
+      if (configurations) {
+        await queryRunner.manager
+          .createQueryBuilder()
+          .delete()
+          .from(DetailConfiguration)
+          .where(
+            'configuration_id IN (SELECT id FROM configurations WHERE productId = :productId)',
+            { productId },
+          )
+          .execute();
+
+        await queryRunner.manager.delete(Configuration, {
+          product: { id: productId },
+        });
+
+        const newConfigs: Configuration[] = [];
+
+        for (const configPayload of configurations) {
+          const newConfig = queryRunner.manager.create(Configuration, {
+            product: savedProduct,
+            name: configPayload.name,
+          });
+
+          const savedConfig = await queryRunner.manager.save(newConfig);
+
+          const detailsPlainObject = configPayload.detail.map((value) => ({
+            value: `${value}`,
+            configuration: savedConfig,
+          }));
+
+          const detailEntities = queryRunner.manager.create(
+            DetailConfiguration,
+            detailsPlainObject,
+          );
+
+          await queryRunner.manager.save(detailEntities);
+
+          newConfigs.push(savedConfig);
+        }
+
+        savedProduct.configurations = newConfigs;
+      }
+
+      await queryRunner.manager.save(savedProduct);
+
+      await queryRunner.commitTransaction();
+
+      const finalProduct = await queryRunner.manager.findOne(Product, {
+        where: { id: productId },
+        relations: [
+          'brand',
+          'category',
+          'images',
+          'configurations',
+          'configurations.otherConfigs',
+        ],
+      });
+
+      if (!finalProduct) {
+        throw new InternalServerErrorException(
+          'Không tìm thấy sản phẩm vừa tạo.',
+        );
+      }
+
+      return finalProduct;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      console.error('Lỗi khi update sản phẩm:', error);
+      throw new InternalServerErrorException(
+        error.message || 'Không thể cập nhật sản phẩm',
+      );
+    } finally {
+      await queryRunner.release();
+    }
+  }
 }
