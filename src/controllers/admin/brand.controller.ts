@@ -37,8 +37,8 @@ export class BrandController {
       .build();
   }
 
-
   @Post()
+  @Public()
   async addBrand(@Body() brandDto: CreateBrandDto) {
     const brand = await this.brandService.addBrand(brandDto);
 
@@ -49,10 +49,9 @@ export class BrandController {
       .build();
   }
 
-
   @Put()
+  @Public()
   async updateBrand(@Body() brandDto: CreateBrandDto) {
-
     const brand = await this.brandService.updateBrand(brandDto);
 
     return Builder<SuccessResponse>()
@@ -63,6 +62,7 @@ export class BrandController {
   }
 
   @Patch(':id/inactive')
+  @Public()
   async toggleActive(@Param('id') id: number) {
     const brand = await this.brandService.inactiveBrand(id);
 
