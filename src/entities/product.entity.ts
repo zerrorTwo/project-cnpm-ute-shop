@@ -13,10 +13,12 @@ import { Comment } from '../entities/comment.entity';
 import { LineItem } from '../entities/line-item.entity';
 import { SerialProduct } from './serialProduct.entity';
 import { CartItem } from './cart-item.entity';
+import { Configuration } from './configuration.entity';
 
 export enum EProductStatus {
   ACTIVE = 'ACTIVE',
   OUT_OF_STOCK = 'OUT_OF_STOCK',
+  STOP_SELLING = 'STOP_SELLING',
 }
 
 @Entity('products')
@@ -60,6 +62,11 @@ export class Product {
   @ManyToOne(() => DiscountDetail)
   discountDetail: DiscountDetail;
 
+  @OneToMany(() => Configuration, (configuration) => configuration.product, {
+    cascade: true,
+  })
+  configurations: Configuration[];
+
   @ManyToOne(() => Category, (category) => category.products)
   category: Category;
 
@@ -75,6 +82,6 @@ export class Product {
   @OneToMany(() => CartItem, (cartItem) => cartItem.product)
   cartItems: CartItem[];
 
-  @OneToMany(() => SerialProduct, (serial) => serial.product)
+  @OneToMany(() => SerialProduct, (serial) => serial.product, { cascade: true })
   serialProducts: SerialProduct[];
 }
