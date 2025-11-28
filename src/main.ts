@@ -61,7 +61,7 @@ async function bootstrap() {
 
   app.setGlobalPrefix('ute-shop/api');
 
-  app.useGlobalPipes(new ValidationPipe());
+  // app.useGlobalPipes(new ValidationPipe());
   app.useGlobalFilters(new GlobalExceptionFilter());
 
   initSwagger(app);

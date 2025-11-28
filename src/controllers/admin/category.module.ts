@@ -37,6 +37,7 @@ export class CategoryController {
   }
 
   @Post()
+  @Public()
   async addCategory(@Body() categoryDto: CreateCategoryDto) {
     const category = await this.categoryService.addCategory(categoryDto);
 
@@ -48,6 +49,7 @@ export class CategoryController {
   }
 
   @Put()
+  @Public()
   async updateCategory(@Body() categoryDto: CreateCategoryDto) {
     const category = await this.categoryService.updateCategory(categoryDto);
 
@@ -59,6 +61,7 @@ export class CategoryController {
   }
 
   @Patch(':id/inactive')
+  @Public()
   async toggleActive(@Param('id') id: number) {
     const category = await this.categoryService.inactiveCategory(id);
 
