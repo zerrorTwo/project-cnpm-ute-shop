@@ -7,7 +7,8 @@ import { BrandRepository } from './brand.repository';
 import { CategoryRepository } from './category.repository'; 
 import { ImageRepository } from './image.repository'; 
 import { ConfigurationRepository } from './configuration.repository'; 
-import { DetailConfigurationRepository } from './detail-configuration.repository'; 
+import { DetailConfigurationRepository } from './detail-configuration.repository';
+import { CartRepository } from './cart.repository'; 
 
 const Repositories = [
   UserRepository,
@@ -18,6 +19,7 @@ const Repositories = [
   ImageRepository,
   ConfigurationRepository,
   DetailConfigurationRepository,
+  CartRepository,
 ];
 
 export {
@@ -29,6 +31,7 @@ export {
   ImageRepository,
   ConfigurationRepository,
   DetailConfigurationRepository,
+  CartRepository,
 };
 
 export default Repositories;
