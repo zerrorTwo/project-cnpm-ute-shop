@@ -84,4 +84,5 @@ export class Product {
 
   @OneToMany(() => SerialProduct, (serial) => serial.product, { cascade: true })
   serialProducts: SerialProduct[];
+  stock: number;
 }

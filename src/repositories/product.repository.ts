@@ -93,6 +93,7 @@ export class ProductRepository {
    * Tìm product theo id
    */
   async findById(id: number): Promise<Product | null> {
+    if (!id) return null;
     return this.repository.findOne({
       where: { id },
       relations: ['images', 'brand', 'category', 'discountDetail'],
@@ -100,6 +101,7 @@ export class ProductRepository {
   }
 
   async findDetailById(id: number): Promise<Product | null> {
+    if (!id) return null;
     return this.repository.findOne({
       where: { id },
       relations: [
