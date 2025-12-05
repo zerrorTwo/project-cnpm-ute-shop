@@ -6,6 +6,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Exclude } from 'class-transformer';
 import { Bill } from '../entities/bill.entity';
 import { Comment } from '../entities/comment.entity';
 import { Cart } from '../entities/cart.entity';
@@ -18,6 +19,7 @@ export class User {
   @Column({ unique: true })
   email: string;
 
+  @Exclude()
   @Column()
   password: string;
 
@@ -44,5 +46,4 @@ export class User {
 
   @OneToMany(() => Cart, (cart) => cart.customer)
   carts: Cart[];
-
 }

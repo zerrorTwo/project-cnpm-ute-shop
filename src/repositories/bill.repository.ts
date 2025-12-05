@@ -16,8 +16,28 @@ export class BillRepository {
   async findById(id: number): Promise<Bill | null> {
     return this.repository.findOne({
       where: { id },
-      relations: ['customer', 'payment', 'items', 'items.product'],
+      relations: [
+        'customer',
+        'payment',
+        'items',
+        'items.product',
+        'items.product.images',
+      ],
     });
+  }
+
+  /**
+   * Tìm bill với điều kiện tùy chỉnh
+   */
+  async findOne(options: any): Promise<Bill | null> {
+    return this.repository.findOne(options);
+  }
+
+  /**
+   * Lưu bill
+   */
+  async save(bill: Bill): Promise<Bill> {
+    return this.repository.save(bill);
   }
 
   /**
@@ -26,7 +46,13 @@ export class BillRepository {
   async findByUserId(userId: number): Promise<Bill[]> {
     return this.repository.find({
       where: { customer: { id: userId } },
-      relations: ['customer', 'payment', 'items', 'items.product'],
+      relations: [
+        'customer',
+        'payment',
+        'items',
+        'items.product',
+        'items.product.images',
+      ],
       order: { createdAt: 'DESC' },
     });
   }

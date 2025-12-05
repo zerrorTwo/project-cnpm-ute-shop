@@ -3,12 +3,13 @@
 import { UserRepository } from './user.repository';
 import { ProductRepository } from './product.repository';
 import { BillRepository } from './bill.repository';
-import { BrandRepository } from './brand.repository'; 
-import { CategoryRepository } from './category.repository'; 
-import { ImageRepository } from './image.repository'; 
-import { ConfigurationRepository } from './configuration.repository'; 
+import { BrandRepository } from './brand.repository';
+import { CategoryRepository } from './category.repository';
+import { ImageRepository } from './image.repository';
+import { ConfigurationRepository } from './configuration.repository';
 import { DetailConfigurationRepository } from './detail-configuration.repository';
-import { CartRepository } from './cart.repository'; 
+import { CartRepository } from './cart.repository';
+import { PaymentRepository } from './payment.repository';
 
 const Repositories = [
   UserRepository,
@@ -20,6 +21,7 @@ const Repositories = [
   ConfigurationRepository,
   DetailConfigurationRepository,
   CartRepository,
+  PaymentRepository,
 ];
 
 export {
@@ -32,6 +34,7 @@ export {
   ConfigurationRepository,
   DetailConfigurationRepository,
   CartRepository,
+  PaymentRepository,
 };
 
 export default Repositories;

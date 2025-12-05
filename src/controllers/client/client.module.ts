@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { VnpayModule } from 'nestjs-vnpay';
+import { ConfigModule } from '@nestjs/config';
 import Controllers from '.';
-import Services from 'src/services';
+import Services, { PaymentServices } from 'src/services';
 import Repositories from 'src/repositories';
 import { User } from 'src/entities/user.entity';
 import { AuthService } from 'src/services/auth.service';
@@ -38,10 +40,12 @@ import { CartItem } from 'src/entities/cart-item.entity';
       CartItem,
     ]),
     MailModule,
+    VnpayModule,
   ],
   controllers: [...Controllers],
   providers: [
     ...Services,
+    ...PaymentServices,
     ...Repositories,
     AuthService,
     AuthGuard,

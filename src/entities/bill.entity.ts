@@ -42,11 +42,23 @@ export class Bill {
   @Column({ type: 'enum', enum: EBillStatus })
   status: EBillStatus;
 
-  @Column()
+  @Column({ type: 'bigint' })
   billCode: number;
 
   @Column()
   orderId: number;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  receiverName: string;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  receiverPhone: string;
+
+  @Column({ type: 'text', nullable: true })
+  shippingAddress: string;
+
+  @Column({ type: 'text', nullable: true })
+  note: string;
 
   @ManyToOne(() => User, (user) => user.bills, { nullable: false })
   @JoinColumn({ name: 'user_id' })
