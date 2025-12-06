@@ -5,7 +5,9 @@ import { Repository, In } from 'typeorm';
 import { DiscountCampaign } from '../entities/discount-campaign.entity';
 import { Product } from '../entities/product.entity';
 import { DiscountCampaignDto } from '../dtos/request/DiscountCampaignDto';
+
 import { PaginatedResult } from 'src/dtos/response/PaginatedResult';
+
 
 @Injectable()
 export class DiscountCampaignService {
@@ -81,6 +83,7 @@ export class DiscountCampaignService {
 
     return this.toCampaignDto(campaign);
   }
+
 
   async getAllDiscountCampaign(
     page: number = 1,
