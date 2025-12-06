@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { VnpayModule } from 'nestjs-vnpay';
 import Services from 'src/services';
 import Controllers from '.';
 import Repositories from 'src/repositories';
@@ -29,11 +30,12 @@ import { CartItem } from 'src/entities/cart-item.entity';
       Bill,
       Brand,
       Category,
-      Configuration, 
+      Configuration,
       DetailConfiguration,
       Cart,
       CartItem,
     ]),
+    VnpayModule,
   ],
   controllers: [...Controllers],
   providers: [...Services, ...Repositories],

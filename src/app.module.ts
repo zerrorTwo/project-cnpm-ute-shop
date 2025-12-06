@@ -2,6 +2,8 @@ import { Global, MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { RouterModule } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { VnpayModule } from 'nestjs-vnpay';
+import { ignoreLogger } from 'vnpay';
 import { APP_GUARD } from '@nestjs/core';
 import { AdminModule } from './controllers/admin/admin.module';
 import { ClientModule } from './controllers/client/client.module';
@@ -28,6 +30,15 @@ import { LoggerService } from './services/logger.service';
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: true,
         logging: false,
+      }),
+      inject: [ConfigService],
+    }),
+    VnpayModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secureSecret: configService.get<string>('VNPAY_SECURE_SECRET', ''),
+        tmnCode: configService.get<string>('VNPAY_TMN_CODE', ''),
+        loggerFn: ignoreLogger,
       }),
       inject: [ConfigService],
     }),

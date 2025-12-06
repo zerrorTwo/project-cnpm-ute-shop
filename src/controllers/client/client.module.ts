@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { VnpayModule } from 'nestjs-vnpay';
+import { ConfigModule } from '@nestjs/config';
 import Controllers from '.';
-import Services from 'src/services';
+import Services, { PaymentServices } from 'src/services';
 import Repositories from 'src/repositories';
 import { User } from 'src/entities/user.entity';
 import { AuthService } from 'src/services/auth.service';
@@ -20,6 +22,9 @@ import { Configuration } from 'src/entities/configuration.entity';
 import { DetailConfiguration } from 'src/entities/other-configuration.entity';
 import { Cart } from 'src/entities/cart.entity';
 import { CartItem } from 'src/entities/cart-item.entity';
+import { Voucher } from 'src/entities/voucher.entity';
+import { LoyaltyPoint } from 'src/entities/loyalty-point.entity';
+import { Payment } from 'src/entities/payment.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -36,12 +41,17 @@ import { CartItem } from 'src/entities/cart-item.entity';
       DetailConfiguration,
       Cart,
       CartItem,
+      Voucher,
+      LoyaltyPoint,
+      Payment,
     ]),
     MailModule,
+    VnpayModule,
   ],
   controllers: [...Controllers],
   providers: [
     ...Services,
+    ...PaymentServices,
     ...Repositories,
     AuthService,
     AuthGuard,
