@@ -14,6 +14,8 @@ import { Category } from 'src/entities/category.entity';
 import { Brand } from 'src/entities/brand.entity';
 import { Configuration } from 'src/entities/configuration.entity';
 import { DetailConfiguration } from 'src/entities/other-configuration.entity';
+import { Cart } from 'src/entities/cart.entity';
+import { CartItem } from 'src/entities/cart-item.entity';
 
 @Module({
   imports: [
@@ -27,8 +29,10 @@ import { DetailConfiguration } from 'src/entities/other-configuration.entity';
       Bill,
       Brand,
       Category,
-      Configuration,
+      Configuration, 
       DetailConfiguration,
+      Cart,
+      CartItem,
     ]),
   ],
   controllers: [...Controllers],
