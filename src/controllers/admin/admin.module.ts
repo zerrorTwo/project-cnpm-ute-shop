@@ -6,7 +6,7 @@ import Repositories from 'src/repositories';
 import { User } from 'src/entities/user.entity';
 import { Product } from 'src/entities/product.entity';
 import { LineItem } from 'src/entities/line-item.entity';
-import { DiscountDetail } from 'src/entities/discount-detail.entity';
+import { DiscountCampaign } from 'src/entities/discount-campaign.entity';
 import { Image } from 'src/entities/image.entity';
 import { Comment } from 'src/entities/comment.entity';
 import { Bill } from 'src/entities/bill.entity';
@@ -21,14 +21,14 @@ import { DetailConfiguration } from 'src/entities/other-configuration.entity';
       User,
       Product,
       LineItem,
-      DiscountDetail,
+      DiscountCampaign,
       Image,
       Comment,
       Bill,
       Brand,
       Category,
-      Configuration, 
-      DetailConfiguration, 
+      Configuration,
+      DetailConfiguration,
     ]),
   ],
   controllers: [...Controllers],
