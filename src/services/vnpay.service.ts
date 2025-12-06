@@ -16,6 +16,7 @@ export interface VNPayPaymentData {
   returnUrl: string;
   ipAddr: string;
   locale?: VnpLocale;
+  billCode?: string | number;
 }
 
 export interface VNPayPaymentResponse {
@@ -35,7 +36,6 @@ export class VNPayService {
       'http://localhost:3000/client/payment/vnpay-return',
     );
 
-    // Tạo VNPay instance trực tiếp
     this.vnpay = new VNPay({
       tmnCode: this.configService.get<string>('VNPAY_TMN_CODE', ''),
       secureSecret: this.configService.get<string>('VNPAY_SECURE_SECRET', ''),
@@ -46,8 +46,9 @@ export class VNPayService {
     paymentData: VNPayPaymentData,
   ): Promise<VNPayPaymentResponse> {
     try {
-      // unique
-      const vnp_TxnRef = `${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+      const vnp_TxnRef = paymentData.billCode
+        ? `${paymentData.billCode}_${Math.floor(Math.random() * 10000)}`
+        : `${Date.now()}_${Math.floor(Math.random() * 10000)}`;
       const createDate = dateFormat(getDateInGMT7(new Date()));
 
       const paymentUrl = this.vnpay.buildPaymentUrl({

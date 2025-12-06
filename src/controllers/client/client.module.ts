@@ -22,6 +22,9 @@ import { Configuration } from 'src/entities/configuration.entity';
 import { DetailConfiguration } from 'src/entities/other-configuration.entity';
 import { Cart } from 'src/entities/cart.entity';
 import { CartItem } from 'src/entities/cart-item.entity';
+import { Voucher } from 'src/entities/voucher.entity';
+import { LoyaltyPoint } from 'src/entities/loyalty-point.entity';
+import { Payment } from 'src/entities/payment.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -38,6 +41,9 @@ import { CartItem } from 'src/entities/cart-item.entity';
       DetailConfiguration,
       Cart,
       CartItem,
+      Voucher,
+      LoyaltyPoint,
+      Payment,
     ]),
     MailModule,
     VnpayModule,

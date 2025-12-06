@@ -10,6 +10,8 @@ import { Exclude } from 'class-transformer';
 import { Bill } from '../entities/bill.entity';
 import { Comment } from '../entities/comment.entity';
 import { Cart } from '../entities/cart.entity';
+import { Voucher } from '../entities/voucher.entity';
+import { LoyaltyPoint } from '../entities/loyalty-point.entity';
 
 @Entity('users')
 export class User {
@@ -32,18 +34,27 @@ export class User {
   @Column({ nullable: true })
   avatar: string;
 
+  @Column({ type: 'int', default: 0 })
+  totalLoyaltyPoints: number; // Tổng điểm tích lũy hiện tại
+
   @OneToMany(() => Bill, (bill) => bill.customer)
   bills: Bill[];
-
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
 
   @OneToMany(() => Comment, (comment) => comment.customer)
   comments: Comment[];
 
   @OneToMany(() => Cart, (cart) => cart.customer)
   carts: Cart[];
+
+  @OneToMany(() => Voucher, (voucher) => voucher.user)
+  vouchers: Voucher[];
+
+  @OneToMany(() => LoyaltyPoint, (loyaltyPoint) => loyaltyPoint.user)
+  loyaltyPoints: LoyaltyPoint[];
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

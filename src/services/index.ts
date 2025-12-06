@@ -5,6 +5,7 @@ import { BrandService } from './brand.service';
 import { CategoryService } from './category.service';
 import { CartService } from './cart.service';
 import { VNPayService } from './vnpay.service';
+import { ReviewService } from './review.service';
 
 const Services = [
   AuthService,
@@ -13,6 +14,7 @@ const Services = [
   BrandService,
   CategoryService,
   CartService,
+  ReviewService,
 ];
 
 export const PaymentServices = [VNPayService];

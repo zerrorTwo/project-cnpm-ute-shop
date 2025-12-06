@@ -58,6 +58,51 @@ export class BillRepository {
   }
 
   /**
+   * Tìm bills theo user ID với phân trang và tìm kiếm
+   */
+  async findByUserIdWithPagination(
+    userId: number,
+    page: number = 1,
+    limit: number = 10,
+    status?: string,
+    search?: string,
+  ): Promise<{ data: Bill[]; total: number }> {
+    const qb = this.repository
+      .createQueryBuilder('bill')
+      .leftJoinAndSelect('bill.customer', 'customer')
+      .leftJoinAndSelect('bill.payment', 'payment')
+      .leftJoinAndSelect('bill.items', 'items')
+      .leftJoinAndSelect('items.product', 'product')
+      .leftJoinAndSelect('product.images', 'images')
+      .where('customer.id = :userId', { userId });
+
+    // Filter theo status
+    if (status) {
+      qb.andWhere('bill.status = :status', { status });
+    }
+
+    // Tìm kiếm theo tên sản phẩm hoặc mã đơn
+    if (search) {
+      qb.andWhere(
+        '(product.productName LIKE :search OR bill.billCode LIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    // Đếm tổng số
+    const total = await qb.getCount();
+
+    // Phân trang
+    const data = await qb
+      .orderBy('bill.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getMany();
+
+    return { data, total };
+  }
+
+  /**
    * Tạo bill mới
    */
   async create(data: Partial<Bill>): Promise<Bill> {

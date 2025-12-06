@@ -121,7 +121,14 @@ export class ProductRepository {
   async findBySlug(slug: string): Promise<Product | null> {
     return this.repository.findOne({
       where: { slug },
-      relations: ['images', 'brand', 'category', 'discountDetail'],
+      relations: [
+        'images',
+        'brand',
+        'category',
+        'discountDetail',
+        'comments',
+        'comments.customer',
+      ],
     });
   }
 

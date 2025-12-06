@@ -15,6 +15,7 @@ import { LineItem } from '../entities/line-item.entity';
 
 export enum EBillStatus {
   PENDING = 'PENDING',
+  SHIPPING ='SHIPPING',
   PAID = 'PAID',
   CANCELLED = 'CANCELLED',
 }

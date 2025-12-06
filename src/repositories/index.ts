@@ -10,6 +10,9 @@ import { ConfigurationRepository } from './configuration.repository';
 import { DetailConfigurationRepository } from './detail-configuration.repository';
 import { CartRepository } from './cart.repository';
 import { PaymentRepository } from './payment.repository';
+import { VoucherRepository } from './voucher.repository';
+import { LoyaltyPointRepository } from './loyalty-point.repository';
+import { CommentRepository } from './comment.repository';
 
 const Repositories = [
   UserRepository,
@@ -22,6 +25,9 @@ const Repositories = [
   DetailConfigurationRepository,
   CartRepository,
   PaymentRepository,
+  VoucherRepository,
+  LoyaltyPointRepository,
+  CommentRepository,
 ];
 
 export {
@@ -35,6 +41,9 @@ export {
   DetailConfigurationRepository,
   CartRepository,
   PaymentRepository,
+  VoucherRepository,
+  LoyaltyPointRepository,
+  CommentRepository,
 };
 
 export default Repositories;

@@ -9,6 +9,7 @@ import { BillRepository } from '../repositories/bill.repository';
 import { CartRepository } from '../repositories/cart.repository';
 import { ProductRepository } from '../repositories/product.repository';
 import { PaymentRepository } from '../repositories/payment.repository';
+import { CommentRepository } from '../repositories/comment.repository';
 import { Bill, EBillStatus, EPaymentMethod } from '../entities/bill.entity';
 import {
   Payment,
@@ -32,45 +33,79 @@ export class BillService {
     private readonly cartRepository: CartRepository,
     private readonly productRepository: ProductRepository,
     private readonly paymentRepository: PaymentRepository,
+    private readonly commentRepository: CommentRepository,
     @InjectRepository(LineItem)
     private readonly lineItemRepository: Repository<LineItem>,
     @Optional() private readonly vnpayService?: VNPayService,
   ) {}
 
-  async getOrdersByUserId(userId: number): Promise<OrderDto[]> {
-    this.logger.log(`Get orders for user: ${userId}`, 'BillService');
-    const bills = await this.billRepository.findByUserId(userId);
-    this.logger.log(
-      `Found ${bills.length} orders for user: ${userId}`,
-      'BillService',
+  async getOrdersByUserId(
+    userId: number,
+    page: number = 1,
+    limit: number = 10,
+    status?: string,
+    search?: string,
+  ) {
+    const bills = await this.billRepository.findByUserIdWithPagination(
+      userId,
+      page,
+      limit,
+      status,
+      search,
     );
 
-    return bills.map((bill) => ({
-      id: bill.id,
-      total: bill.total,
-      discount: bill.discount,
-      paymentMethod: bill.paymentMethod,
-      paymentStatus: bill.payment?.paymentStatus,
-      status: bill.status,
-      billCode: bill.billCode,
-      orderId: bill.orderId,
-      receiverName: bill.receiverName,
-      receiverPhone: bill.receiverPhone,
-      shippingAddress: bill.shippingAddress,
-      note: bill.note,
-      createdAt: bill.createdAt,
-      items: bill.items.map((item) => ({
-        id: item.id,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        product: {
-          id: item.product.id,
-          productName: item.product.productName,
-          slug: item.product.slug,
-          images: item.product.images?.map((img) => img.url) || [],
-        },
-      })),
-    }));
+    const ordersWithReviews = await Promise.all(
+      bills.data.map(async (bill) => {
+        const itemsWithReviewStatus = await Promise.all(
+          bill.items.map(async (item) => {
+            const isReviewed =
+              await this.commentRepository.hasUserReviewedProduct(
+                userId,
+                item.product.id,
+                bill.id,
+              );
+
+            return {
+              id: item.id,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              isReviewed,
+              product: {
+                id: item.product.id,
+                productName: item.product.productName,
+                slug: item.product.slug,
+                images: item.product.images?.map((img) => img.url) || [],
+              },
+            };
+          }),
+        );
+
+        return {
+          id: bill.id,
+          total: bill.total,
+          discount: bill.discount,
+          paymentMethod: bill.paymentMethod,
+          paymentStatus: bill.payment?.paymentStatus,
+          status: bill.status,
+          billCode: bill.billCode,
+          orderId: bill.orderId,
+          receiverName: bill.receiverName,
+          receiverPhone: bill.receiverPhone,
+          shippingAddress: bill.shippingAddress,
+          note: bill.note,
+          createdAt: bill.createdAt,
+          items: itemsWithReviewStatus,
+        };
+      }),
+    );
+
+    return {
+      data: ordersWithReviews,
+      total: bills.total,
+      page,
+      limit,
+      totalPages: Math.ceil(bills.total / limit),
+    };
   }
 
   async getCheckoutInfo(userId: number) {
@@ -175,10 +210,9 @@ export class BillService {
     const payment = await this.paymentRepository.save({
       paymentStatus: EPaymentStatus.PENDING,
       currency: EPaymentCurrency.VND,
-      paymentMethod: checkoutData.paymentMethod as any, 
+      paymentMethod: checkoutData.paymentMethod as any,
     });
 
-    // Tạo bill với payment
     const bill = await this.billRepository.create({
       customer: { id: userId } as any,
       total,
@@ -223,6 +257,7 @@ export class BillService {
           orderType: ProductCode.Other,
           returnUrl: `${process.env.CLIENT_URL || 'http://localhost:3000'}/payment/vnpay-return`,
           ipAddr: checkoutData.ipAddr || '127.0.0.1',
+          billCode: billCode,
         });
 
         paymentUrl = vnpayResponse.paymentUrl;
@@ -282,7 +317,6 @@ export class BillService {
 
     const responseCode = query.vnp_ResponseCode;
     if (responseCode === '00') {
-      bill.status = EBillStatus.PAID;
       if (bill.payment) {
         bill.payment.paymentStatus = EPaymentStatus.SUCCESS;
         await this.paymentRepository.save(bill.payment);
@@ -303,13 +337,6 @@ export class BillService {
       const errorMessage =
         this.vnpayService?.getResponseMessage(responseCode) ||
         'Thanh toán thất bại';
-
-      // Update payment status to FAILED
-      if (bill.payment) {
-        bill.payment.paymentStatus = EPaymentStatus.FAILED;
-        await this.paymentRepository.save(bill.payment);
-      }
-
       return {
         success: false,
         message: errorMessage,
@@ -319,6 +346,115 @@ export class BillService {
           status: bill.status,
         },
       };
+    }
+  }
+
+  async cancelOrder(billId: number, userId: number) {
+    this.logger.log(`Cancel order ${billId} by user ${userId}`);
+
+    const bill = await this.billRepository.findOne({
+      where: { id: billId },
+      relations: ['customer', 'items', 'items.product', 'payment'],
+    });
+
+    if (!bill) {
+      throw new NotFoundException('Không tìm thấy đơn hàng');
+    }
+    if (bill.customer.id !== userId) {
+      throw new BadRequestException('Bạn không có quyền hủy đơn hàng này');
+    }
+    if (bill.status === EBillStatus.PAID) {
+      throw new BadRequestException(
+        'Không thể hủy đơn hàng đã thanh toán. Vui lòng liên hệ CSKH.',
+      );
+    }
+    if (bill.status === EBillStatus.CANCELLED) {
+      throw new BadRequestException('Đơn hàng đã được hủy trước đó');
+    }
+    for (const item of bill.items) {
+      item.product.quantityStock += item.quantity;
+      await this.productRepository.repository.save(item.product);
+    }
+    this.logger.log(`Stock restored for cancelled bill: ${billId}`);
+
+    bill.status = EBillStatus.CANCELLED;
+    await this.billRepository.save(bill);
+    if (bill.payment && bill.payment.paymentStatus === EPaymentStatus.PENDING) {
+      bill.payment.paymentStatus = EPaymentStatus.FAILED;
+      await this.paymentRepository.save(bill.payment);
+    }
+    return {
+      success: true,
+      message: 'Hủy đơn hàng thành công',
+      billId: bill.id,
+      billCode: bill.billCode,
+    };
+  }
+
+  async recreatePaymentUrl(billCode: string, userId: number, ipAddr: string) {
+    this.logger.log(
+      `Recreate payment URL for billCode: ${billCode}, userId: ${userId}`,
+    );
+
+    const bill = await this.billRepository.findOne({
+      where: { billCode: parseInt(billCode) },
+      relations: ['customer', 'payment'],
+    });
+
+    if (!bill) {
+      throw new NotFoundException('Không tìm thấy đơn hàng');
+    }
+
+    if (bill.customer.id !== userId) {
+      throw new BadRequestException(
+        'Bạn không có quyền tạo lại link thanh toán cho đơn hàng này',
+      );
+    }
+
+    if (bill.status === EBillStatus.PAID) {
+      throw new BadRequestException('Đơn hàng đã được thanh toán');
+    }
+
+    if (bill.status === EBillStatus.CANCELLED) {
+      throw new BadRequestException(
+        'Không thể tạo lại link thanh toán cho đơn hàng đã hủy',
+      );
+    }
+
+    if (bill.paymentMethod === EPaymentMethod.CASH) {
+      throw new BadRequestException(
+        'Đơn hàng thanh toán COD không cần link thanh toán',
+      );
+    }
+
+    if (!this.vnpayService) {
+      throw new BadRequestException('Dịch vụ thanh toán online không khả dụng');
+    }
+
+    try {
+      const vnpayResponse = await this.vnpayService.createPaymentUrl({
+        amount: bill.total,
+        orderInfo: `Thanh toan don hang ${bill.billCode}`,
+        orderType: ProductCode.Other,
+        returnUrl: `${process.env.CLIENT_URL || 'http://localhost:3000'}/payment/vnpay-return`,
+        ipAddr: ipAddr || '127.0.0.1',
+        billCode: bill.billCode,
+      });
+
+      this.logger.log(
+        `Payment URL recreated successfully for bill: ${bill.billCode}`,
+      );
+
+      return {
+        success: true,
+        message: 'Tạo lại link thanh toán thành công',
+        paymentUrl: vnpayResponse.paymentUrl,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to recreate payment URL: ${error.message}`);
+      throw new BadRequestException(
+        'Không thể tạo lại link thanh toán. Vui lòng thử lại.',
+      );
     }
   }
 }
