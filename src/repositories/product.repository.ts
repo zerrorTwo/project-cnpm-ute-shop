@@ -31,7 +31,7 @@ export class ProductRepository {
       .leftJoin('product.lineItems', 'li')
       .leftJoinAndSelect('product.brand', 'brand')
       .leftJoinAndSelect('product.category', 'category')
-      .leftJoinAndSelect('product.discountDetail', 'discountDetail')
+      .leftJoinAndSelect('product.discountCampaign', 'discountCampaign')
       .where('product.displayStatus = :status', { status: true })
       .addSelect('COALESCE(SUM(li.quantity), 0)', 'sold')
       .groupBy('product.id')
@@ -64,7 +64,7 @@ export class ProductRepository {
       .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('product.brand', 'brand')
       .leftJoinAndSelect('product.category', 'category')
-      .leftJoinAndSelect('product.discountDetail', 'discountDetail')
+      .leftJoinAndSelect('product.discountCampaign', 'discountCampaign')
       .where('product.displayStatus = :status', { status: true })
       .orderBy('product.views', 'DESC')
       .take(limit);
@@ -79,12 +79,12 @@ export class ProductRepository {
   async findTopDiscount(limit = 4): Promise<Product[]> {
     return this.repository
       .createQueryBuilder('product')
-      .leftJoinAndSelect('product.discountDetail', 'discountDetail')
+      .leftJoinAndSelect('product.discountCampaign', 'discountCampaign')
       .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('product.brand', 'brand')
       .leftJoinAndSelect('product.category', 'category')
       .where('product.displayStatus = :status', { status: true })
-      .orderBy('discountDetail.percentage', 'DESC')
+      .orderBy('discountCampaign.percentage', 'DESC')
       .limit(limit)
       .getMany();
   }
@@ -96,7 +96,7 @@ export class ProductRepository {
     if (!id) return null;
     return this.repository.findOne({
       where: { id },
-      relations: ['images', 'brand', 'category', 'discountDetail'],
+      relations: ['images', 'brand', 'category', 'discountCampaign'],
     });
   }
 
@@ -108,7 +108,7 @@ export class ProductRepository {
         'images',
         'brand',
         'category',
-        'discountDetail',
+        'discountCampaign',
         'configurations',
         'configurations.otherConfigs',
       ],
@@ -121,14 +121,7 @@ export class ProductRepository {
   async findBySlug(slug: string): Promise<Product | null> {
     return this.repository.findOne({
       where: { slug },
-      relations: [
-        'images',
-        'brand',
-        'category',
-        'discountDetail',
-        'comments',
-        'comments.customer',
-      ],
+      relations: ['images', 'brand', 'category', 'discountCampaign'],
     });
   }
 
@@ -148,7 +141,7 @@ export class ProductRepository {
       .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('product.brand', 'brand')
       .leftJoinAndSelect('product.category', 'category')
-      .leftJoinAndSelect('product.discountDetail', 'discountDetail');
+      .leftJoinAndSelect('product.discountCampaign', 'discountCampaign');
 
     if (filters.search) {
       qb.andWhere('product.productName LIKE :search', {
@@ -193,7 +186,7 @@ export class ProductRepository {
       .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('product.brand', 'brand')
       .leftJoinAndSelect('product.category', 'category')
-      .leftJoinAndSelect('product.discountDetail', 'discountDetail')
+      .leftJoinAndSelect('product.discountCampaign', 'discountCampaign')
       .where('product.displayStatus = :status', { status: true });
     // Apply filters
     if (filters.search) {

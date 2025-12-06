@@ -15,7 +15,7 @@ export const MOCK_FASHION_PRODUCTS: Partial<Product>[] = [
     images: [
       { id: 1, url: 'https://example.com/images/denim-jacket-1.jpg' } as any,
     ],
-    discountDetail: { id: 1, percentage: 10 } as any,
+    discountCampaign: { id: 1, percentage: 10 } as any,
   },
   {
     id: 102,
@@ -31,7 +31,7 @@ export const MOCK_FASHION_PRODUCTS: Partial<Product>[] = [
     images: [
       { id: 2, url: 'https://example.com/images/maxi-dress-1.jpg' } as any,
     ],
-    discountDetail: { id: 2, percentage: 20 } as any,
+    discountCampaign: { id: 2, percentage: 20 } as any,
   },
   {
     id: 103,
@@ -45,7 +45,7 @@ export const MOCK_FASHION_PRODUCTS: Partial<Product>[] = [
     brand: { id: 3, brandName: 'UrbanDenim' } as any,
     category: { id: 12, categoryName: 'Quần jean' } as any,
     images: [{ id: 3, url: 'https://example.com/images/jeans-1.jpg' } as any],
-    discountDetail: { id: 3, percentage: 0 } as any,
+    discountCampaign: { id: 3, percentage: 0 } as any,
   },
   {
     id: 104,
@@ -61,7 +61,7 @@ export const MOCK_FASHION_PRODUCTS: Partial<Product>[] = [
     images: [
       { id: 4, url: 'https://example.com/images/shirt-white-1.jpg' } as any,
     ],
-    discountDetail: { id: 4, percentage: 20 } as any,
+    discountCampaign: { id: 4, percentage: 20 } as any,
   },
   {
     id: 105,
@@ -75,6 +75,6 @@ export const MOCK_FASHION_PRODUCTS: Partial<Product>[] = [
     brand: { id: 5, brandName: 'WarmKnit' } as any,
     category: { id: 14, categoryName: 'Áo len' } as any,
     images: [{ id: 5, url: 'https://example.com/images/sweater-1.jpg' } as any],
-    discountDetail: { id: 5, percentage: 25 } as any,
+    discountCampaign: { id: 5, percentage: 25 } as any,
   },
 ];

@@ -3,9 +3,13 @@ import { ProductService } from './product.service';
 import { BillService } from './bill.service';
 import { BrandService } from './brand.service';
 import { CategoryService } from './category.service';
+
+import { DiscountCampaignService } from './discount-campaign.service';
+
 import { CartService } from './cart.service';
 import { VNPayService } from './vnpay.service';
 import { ReviewService } from './review.service';
+
 
 const Services = [
   AuthService,
@@ -13,6 +17,7 @@ const Services = [
   BillService,
   BrandService,
   CategoryService,
+  DiscountCampaignService,
   CartService,
   ReviewService,
 ];

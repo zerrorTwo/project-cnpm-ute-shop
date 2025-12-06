@@ -4,16 +4,17 @@ import {
   Column,
   ManyToOne,
   OneToMany,
+  JoinColumn,
 } from 'typeorm';
 import { Brand } from '../entities/brand.entity';
 import { Category } from '../entities/category.entity';
-import { DiscountDetail } from '../entities/discount-detail.entity';
 import { Image } from '../entities/image.entity';
 import { Comment } from '../entities/comment.entity';
 import { LineItem } from '../entities/line-item.entity';
 import { SerialProduct } from './serialProduct.entity';
 import { CartItem } from './cart-item.entity';
 import { Configuration } from './configuration.entity';
+import { DiscountCampaign } from './discount-campaign.entity';
 
 export enum EProductStatus {
   ACTIVE = 'ACTIVE',
@@ -59,8 +60,12 @@ export class Product {
   @ManyToOne(() => Brand, (brand) => brand.products)
   brand: Brand;
 
-  @ManyToOne(() => DiscountDetail)
-  discountDetail: DiscountDetail;
+  @ManyToOne(() => DiscountCampaign, (campaign) => campaign.products, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'discount_campaign_id' })
+  discountCampaign: DiscountCampaign | null;
 
   @OneToMany(() => Configuration, (configuration) => configuration.product, {
     cascade: true,
