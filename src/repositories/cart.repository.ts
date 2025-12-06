@@ -23,7 +23,7 @@ export class CartRepository {
         'cartItems',
         'cartItems.product',
         'cartItems.product.images',
-        'cartItems.product.discountDetail',
+        'cartItems.product.discountCampaign',
       ],
     });
   }

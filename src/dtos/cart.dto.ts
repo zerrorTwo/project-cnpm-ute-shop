@@ -32,7 +32,7 @@ export class CartItemResponseDto {
     unitPrice: number;
     quantityStock: number;
     images: Array<{ id: number; url: string }>;
-    discountDetail?: {
+    discountCampaign?: {
       percentage: number;
     };
   };

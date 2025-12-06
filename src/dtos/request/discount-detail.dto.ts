@@ -1,7 +1,7 @@
 import { IsArray, IsDateString, IsNumber, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class DiscountDetailDto {
+export class discountCampaignDto {
   @ApiProperty({ description: 'ID of the detail', example: 1, required: false })
   @IsOptional()
   @IsNumber()

@@ -89,8 +89,7 @@ export class CartService {
     );
 
     // Tìm cart item và kiểm tra ownership
-    const cartItem =
-      await this.cartRepository.findCartItemById(cartItemId);
+    const cartItem = await this.cartRepository.findCartItemById(cartItemId);
     if (!cartItem) {
       throw new NotFoundException('Cart item không tồn tại');
     }
@@ -100,9 +99,7 @@ export class CartService {
     }
 
     // Kiểm tra tồn kho
-    const product = await this.productRepository.findById(
-      cartItem.product.id,
-    );
+    const product = await this.productRepository.findById(cartItem.product.id);
     if (product && product.quantityStock < quantity) {
       throw new BadRequestException(
         `Không đủ hàng. Chỉ còn ${product.quantityStock} sản phẩm`,
@@ -132,8 +129,7 @@ export class CartService {
     );
 
     // Tìm cart item và kiểm tra ownership
-    const cartItem =
-      await this.cartRepository.findCartItemById(cartItemId);
+    const cartItem = await this.cartRepository.findCartItemById(cartItemId);
     if (!cartItem) {
       throw new NotFoundException('Cart item không tồn tại');
     }
@@ -150,7 +146,7 @@ export class CartService {
 
     this.logger.log(`Removed cart item successfully: userId=${userId}`);
 
-    return this.formatCartResponse(updatedCart); 
+    return this.formatCartResponse(updatedCart);
   }
 
   /**
@@ -192,7 +188,7 @@ export class CartService {
     // Format cart items
     const items: CartItemResponseDto[] = cart.cartItems.map((item) => {
       const basePrice = item.product.unitPrice;
-      const discount = item.product.discountDetail?.percentage || 0;
+      const discount = item.product.discountCampaign?.percentage || 0;
       const finalPrice = basePrice * (1 - discount / 100);
       const itemTotal = finalPrice * item.quantity;
 
@@ -206,9 +202,9 @@ export class CartService {
           unitPrice: item.product.unitPrice,
           quantityStock: item.product.quantityStock,
           images: item.product.images || [],
-          discountDetail: item.product.discountDetail
+          discountCampaign: item.product.discountCampaign
             ? {
-                percentage: item.product.discountDetail.percentage,
+                percentage: item.product.discountCampaign.percentage,
               }
             : undefined,
         },
