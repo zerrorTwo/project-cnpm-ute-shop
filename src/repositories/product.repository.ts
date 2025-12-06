@@ -18,7 +18,7 @@ export class ProductRepository {
       take: limit,
       where: { displayStatus: true },
       order: { id: 'DESC' },
-      relations: ['images', 'brand', 'category', 'discountDetail'],
+      relations: ['images', 'brand', 'category', 'discountCampaign'],
     });
   }
 
@@ -74,7 +74,7 @@ export class ProductRepository {
   }
 
   /**
-   * Lấy sản phẩm có khuyến mãi cao nhất (theo discountDetail.percentage)
+   * Lấy sản phẩm có khuyến mãi cao nhất (theo discountCampaign.percentage)
    */
   async findTopDiscount(limit = 4): Promise<Product[]> {
     return this.repository

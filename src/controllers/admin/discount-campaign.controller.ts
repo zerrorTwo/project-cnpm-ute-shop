@@ -41,6 +41,7 @@ export class DiscountCampaignController {
   }
 
   @Put()
+  @Public()
   @ApiOperation({
     summary: 'Update discountCampaign',
     description: 'Send a request via this API to update discountCampaign',
@@ -56,6 +57,7 @@ export class DiscountCampaignController {
   }
 
   @Delete(':proID')
+  @Public()
   async changeStatusDiscountCampaign(
     @Param('proID', ParseIntPipe) proID: number,
   ) {

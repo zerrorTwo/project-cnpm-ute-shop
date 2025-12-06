@@ -10,7 +10,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
-import { DiscountDetailDto } from './discount-detail.dto';
+import { discountCampaignDto } from './discount-detail.dto';
 
 export class DiscountCampaignDto {
   @ApiProperty({
