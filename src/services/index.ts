@@ -9,6 +9,7 @@ import { DiscountCampaignService } from './discount-campaign.service';
 import { CartService } from './cart.service';
 import { VNPayService } from './vnpay.service';
 import { ReviewService } from './review.service';
+import { CommentService } from './comment.service';
 
 
 const Services = [
@@ -20,6 +21,7 @@ const Services = [
   DiscountCampaignService,
   CartService,
   ReviewService,
+  CommentService,
 ];
 
 export const PaymentServices = [VNPayService];
