@@ -3,6 +3,7 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
+  OneToMany,
   CreateDateColumn,
   UpdateDateColumn,
   JoinColumn,
@@ -19,7 +20,7 @@ export class Comment {
   @Column({ type: 'text' })
   description: string;
 
-  @Column({ type: 'int' })
+  @Column({ type: 'int', nullable: true })
   rating: number;
 
   @Column({ type: 'boolean', default: true })
@@ -40,6 +41,14 @@ export class Comment {
   @ManyToOne(() => Bill, { nullable: true })
   @JoinColumn({ name: 'bill_id' })
   bill: Bill;
+
+  // Nested comments - replies
+  @ManyToOne(() => Comment, (comment) => comment.replies, { nullable: true })
+  @JoinColumn({ name: 'parent_id' })
+  parent: Comment;
+
+  @OneToMany(() => Comment, (comment) => comment.parent)
+  replies: Comment[];
 
   @CreateDateColumn()
   createdAt: Date;
