@@ -12,6 +12,9 @@ import { Category } from 'src/entities/category.entity';
 import { Configuration } from 'src/entities/configuration.entity';
 import { DetailConfiguration } from 'src/entities/other-configuration.entity';
 import { Image } from 'src/entities/image.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Bill } from 'src/entities/bill.entity';
 
 export interface CreateProductPayload extends CreateProductDto {}
 @Injectable()
@@ -23,6 +26,8 @@ export class ProductService {
     private readonly imageRepository: ImageRepository,
     private readonly configurationRepository: ConfigurationRepository,
     private readonly detailConfigurationRepository: DetailConfigurationRepository,
+    @InjectRepository(Bill)
+    private readonly billRepository: Repository<Bill>,
   ) {}
 
   async getNewest(limit = 8): Promise<Product[]> {
@@ -62,7 +67,14 @@ export class ProductService {
   }
 
   async getDetailProductById(id: number): Promise<Product | null> {
-    return this.productRepository.findDetailById(id);
+    const product = await this.productRepository.findDetailById(id);
+
+    if (product) {
+      // Increment views counter
+      await this.productRepository.repository.increment({ id }, 'views', 1);
+    }
+
+    return product;
   }
 
   async getProductBySlug(slug: string): Promise<Product | null> {
@@ -433,5 +445,71 @@ export class ProductService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  /**
+   * Get similar products based on category, price range, and brand
+   */
+  async getSimilarProducts(
+    productId: number,
+    limit: number = 6,
+  ): Promise<Product[]> {
+    const product = await this.productRepository.findById(productId);
+    if (!product) {
+      return [];
+    }
+
+    const minPrice = product.unitPrice * 0.7; // -30%
+    const maxPrice = product.unitPrice * 1.3; // +30%
+
+    const queryBuilder = this.productRepository.repository
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.images', 'images')
+      .leftJoinAndSelect('product.brand', 'brand')
+      .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('product.discountCampaign', 'discountCampaign')
+      .where('product.id != :productId', { productId })
+      .andWhere('product.displayStatus = :displayStatus', {
+        displayStatus: true,
+      })
+      .andWhere('product.category.id = :categoryId', {
+        categoryId: product.category.id,
+      });
+
+    // Optional: prioritize same brand
+    queryBuilder
+      .addSelect(
+        `CASE WHEN product.brand.id = :brandId THEN 0 ELSE 1 END`,
+        'brand_priority',
+      )
+      .setParameter('brandId', product.brand?.id || 0)
+      .addOrderBy('brand_priority', 'ASC');
+
+    queryBuilder
+      .andWhere('product.unitPrice BETWEEN :minPrice AND :maxPrice', {
+        minPrice,
+        maxPrice,
+      })
+      .orderBy('product.views', 'DESC')
+      .limit(limit);
+
+    return queryBuilder.getMany();
+  }
+
+  /**
+   * Get count of unique customers who purchased this product
+   */
+  async getCustomerPurchaseCount(productId: number): Promise<number> {
+    const result = await this.billRepository
+      .createQueryBuilder('bill')
+      .innerJoin('bill.items', 'lineItem')
+      .where('lineItem.product.id = :productId', { productId })
+      .andWhere('bill.status IN (:...statuses)', {
+        statuses: ['PAID', 'SHIPPING'],
+      })
+      .select('COUNT(DISTINCT bill.user_id)', 'count')
+      .getRawOne();
+
+    return parseInt(result?.count || '0', 10);
   }
 }

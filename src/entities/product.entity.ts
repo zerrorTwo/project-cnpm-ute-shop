@@ -57,6 +57,9 @@ export class Product {
   @Column({ default: 0 })
   quantityStock: number;
 
+  @Column({ default: 0 })
+  productSold: number;
+
   @ManyToOne(() => Brand, (brand) => brand.products)
   brand: Brand;
 

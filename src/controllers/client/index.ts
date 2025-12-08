@@ -4,6 +4,7 @@ import { BillController } from './bill.controller';
 import { CartController } from './cart.controller';
 import { ReviewController } from './review.controller';
 import { CommentController } from './comment.controller';
+import { FavouriteController } from './favourite.controller';
 
 const Controllers = [
   AuthController,
@@ -12,6 +13,7 @@ const Controllers = [
   CartController,
   ReviewController,
   CommentController,
+  FavouriteController,
 ];
 
 export default Controllers;
