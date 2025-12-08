@@ -25,6 +25,7 @@ import { CartItem } from 'src/entities/cart-item.entity';
 import { Voucher } from 'src/entities/voucher.entity';
 import { LoyaltyPoint } from 'src/entities/loyalty-point.entity';
 import { Payment } from 'src/entities/payment.entity';
+import { Favourite } from 'src/entities/favourite.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -44,6 +45,7 @@ import { Payment } from 'src/entities/payment.entity';
       Voucher,
       LoyaltyPoint,
       Payment,
+      Favourite,
     ]),
     MailModule,
     VnpayModule,

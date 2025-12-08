@@ -1,4 +1,13 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Query,
+  Post,
+  Request,
+  UseGuards,
+  Ip,
+} from '@nestjs/common';
 import { Builder } from 'builder-pattern';
 import { HttpStatusCode } from 'axios';
 import { Public } from '../../utils/auth/public.decorator';
@@ -6,6 +15,7 @@ import { SuccessResponse } from '../../dtos/response.dto';
 import { SuccessMessages } from '../../constants/messages';
 import { ProductService } from '../../services/product.service';
 import { FilterProductDto } from '../../dtos/product.dto';
+import { AuthGuard } from '../../utils/auth/auth.guard';
 
 @Controller('home')
 export class ProductController {
@@ -113,6 +123,26 @@ export class ProductController {
 
     return Builder<SuccessResponse>()
       .data(product)
+      .message(SuccessMessages.GET_SUCCESSFULLY)
+      .status(HttpStatusCode.Ok)
+      .build();
+  }
+
+  @Public()
+  @Get('products/:id/similar')
+  async getSimilarProducts(
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+  ) {
+    const productId = parseInt(id, 10);
+    const limitNum = limit ? parseInt(limit, 10) : 6;
+    const products = await this.productService.getSimilarProducts(
+      productId,
+      limitNum,
+    );
+
+    return Builder<SuccessResponse>()
+      .data(products)
       .message(SuccessMessages.GET_SUCCESSFULLY)
       .status(HttpStatusCode.Ok)
       .build();

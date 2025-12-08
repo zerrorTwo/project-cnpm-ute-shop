@@ -17,6 +17,7 @@ import { Configuration } from 'src/entities/configuration.entity';
 import { DetailConfiguration } from 'src/entities/other-configuration.entity';
 import { Cart } from 'src/entities/cart.entity';
 import { CartItem } from 'src/entities/cart-item.entity';
+import { Favourite } from 'src/entities/favourite.entity';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { CartItem } from 'src/entities/cart-item.entity';
       DetailConfiguration,
       Cart,
       CartItem,
+      Favourite,
     ]),
     VnpayModule,
   ],

@@ -117,7 +117,7 @@ export class BillService {
     let subtotal = 0;
     const items = cart.cartItems.map((item) => {
       const basePrice = item.product.unitPrice;
-      const discount = item.product.discountDetail?.percentage || 0;
+      const discount = item.product.discountCampaign?.percentage || 0;
       const finalPrice = basePrice * (1 - discount / 100);
       const itemTotal = finalPrice * item.quantity;
       subtotal += itemTotal;
@@ -167,7 +167,7 @@ export class BillService {
 
     for (const item of cart.cartItems) {
       const basePrice = item.product.unitPrice;
-      const discount = item.product.discountDetail?.percentage || 0;
+      const discount = item.product.discountCampaign?.percentage || 0;
       const finalPrice = basePrice * (1 - discount / 100);
       const itemTotal = finalPrice * item.quantity;
       subtotal += itemTotal;

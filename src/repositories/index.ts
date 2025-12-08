@@ -13,6 +13,7 @@ import { PaymentRepository } from './payment.repository';
 import { VoucherRepository } from './voucher.repository';
 import { LoyaltyPointRepository } from './loyalty-point.repository';
 import { CommentRepository } from './comment.repository';
+import { FavouriteRepository } from './favourite.repository';
 
 const Repositories = [
   UserRepository,
@@ -28,6 +29,7 @@ const Repositories = [
   VoucherRepository,
   LoyaltyPointRepository,
   CommentRepository,
+  FavouriteRepository,
 ];
 
 export {
@@ -44,6 +46,7 @@ export {
   VoucherRepository,
   LoyaltyPointRepository,
   CommentRepository,
+  FavouriteRepository,
 };
 
 export default Repositories;
