@@ -247,4 +247,13 @@ export class ProductRepository {
 
     return { data, total };
   }
+
+  async getTotalProductQuantity(): Promise<number> {
+    const result = await this.repository
+      .createQueryBuilder('p')
+      .select('COUNT(*)', 'total')
+      .getRawOne();
+
+    return Number(result.total) || 0;
+  }
 }

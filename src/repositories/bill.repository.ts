@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Bill } from '../entities/bill.entity';
+import { Between, Repository } from 'typeorm';
+import { Bill, EBillStatus } from '../entities/bill.entity';
 
 @Injectable()
 export class BillRepository {
@@ -124,5 +124,39 @@ export class BillRepository {
   async delete(id: number): Promise<boolean> {
     const result = await this.repository.delete(id);
     return (result.affected ?? 0) > 0;
+  }
+
+  async countBillsByStatus(status: EBillStatus): Promise<number> {
+    return this.repository
+      .createQueryBuilder('b')
+      .where('b.status = :status', { status })
+      .getCount();
+  }
+
+  async revenueByTime(
+    start: Date,
+    end: Date,
+    status: EBillStatus,
+  ): Promise<Bill[]> {
+    return this.repository.find({
+      where: {
+        status,
+        createdAt: Between(start, end),
+      },
+      order: {
+        createdAt: 'ASC',
+      },
+      relations: ['items', 'items.product'],
+    });
+  }
+
+  async totalRevenue(status: EBillStatus): Promise<number> {
+    const result = await this.repository
+      .createQueryBuilder('b')
+      .select('SUM(b.total)', 'total')
+      .where('b.status = :status', { status })
+      .getRawOne();
+
+    return Number(result.total) || 0;
   }
 }
