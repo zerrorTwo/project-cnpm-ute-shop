@@ -600,7 +600,7 @@ export class BillService {
     const rawData = await this.lineItemRepository2.topSeller(
       start,
       end,
-      EBillStatus.COMPLETED,
+      EBillStatus.PAID,
     );
 
     return Promise.all(

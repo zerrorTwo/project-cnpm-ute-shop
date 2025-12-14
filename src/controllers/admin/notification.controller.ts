@@ -3,14 +3,16 @@ import { ApiBearerAuth, ApiTags, ApiBody } from '@nestjs/swagger';
 import { AuthGuard } from 'src/utils/auth/auth.guard';
 import { NotificationService } from 'src/services/notification.service';
 import { CreateNotificationEventDto } from 'src/dtos/notification.dto';
+import { Public } from 'src/utils/auth/public.decorator';
 
 @ApiTags('Admin - Notifications')
 @Controller('notifications')
 export class AdminNotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth()
+  // @UseGuards(AuthGuard)
+  // @ApiBearerAuth()
+  @Public()
   @Post('create-event')
   @ApiBody({
     type: CreateNotificationEventDto,
