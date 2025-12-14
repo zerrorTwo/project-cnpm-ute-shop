@@ -16,6 +16,8 @@ import { CommentRepository } from './comment.repository';
 import { FavouriteRepository } from './favourite.repository';
 import { LineItem } from 'src/entities/line-item.entity';
 import { LineItemRepository } from './line-item.repository';
+import { SerialProductRepository } from './serial-product.repository';
+import { NotificationRepository } from './notification.repository';
 
 const Repositories = [
   UserRepository,
@@ -33,6 +35,8 @@ const Repositories = [
   CommentRepository,
   FavouriteRepository,
   LineItemRepository,
+  SerialProductRepository,
+  NotificationRepository,
 ];
 
 export {
@@ -51,6 +55,8 @@ export {
   CommentRepository,
   FavouriteRepository,
   LineItemRepository,
+  SerialProductRepository,
+  NotificationRepository,
 };
 
 export default Repositories;

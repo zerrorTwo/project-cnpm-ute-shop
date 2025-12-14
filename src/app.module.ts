@@ -7,6 +7,7 @@ import { ignoreLogger } from 'vnpay';
 import { APP_GUARD } from '@nestjs/core';
 import { AdminModule } from './controllers/admin/admin.module';
 import { ClientModule } from './controllers/client/client.module';
+import { NotificationModule } from './notifications.module';
 import { AuthGuard } from './utils/auth/auth.guard';
 import { User } from './entities/user.entity';
 import { LoggerMiddleware } from './middlewares/logger.middleware';
@@ -44,6 +45,7 @@ import { LoggerService } from './services/logger.service';
     }),
     AdminModule,
     ClientModule,
+    NotificationModule,
     RouterModule.register([
       {
         path: 'admin',

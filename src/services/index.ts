@@ -11,6 +11,7 @@ import { VNPayService } from './vnpay.service';
 import { ReviewService } from './review.service';
 import { CommentService } from './comment.service';
 import { FavouriteService } from './favourite.service';
+import { NotificationService } from './notification.service';
 
 const Services = [
   AuthService,
@@ -23,6 +24,7 @@ const Services = [
   ReviewService,
   CommentService,
   FavouriteService,
+  NotificationService
 ];
 
 export const PaymentServices = [VNPayService];

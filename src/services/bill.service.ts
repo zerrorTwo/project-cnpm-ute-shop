@@ -28,6 +28,8 @@ import { DashBoardResponseDto } from 'src/dtos/response/DashBoardResponseDto';
 import { ProductBestSellingDto } from 'src/dtos/request/ProductBestSellingDto';
 import { User } from 'src/entities';
 import { UserRepository } from 'src/repositories/user.repository';
+import { NotificationService } from './notification.service';
+import { ENotificationType } from 'src/entities/notification.entity';
 
 @Injectable()
 export class BillService {
@@ -45,6 +47,7 @@ export class BillService {
 
     private readonly lineItemRepository2: LineItemRepository,
     @Optional() private readonly vnpayService?: VNPayService,
+    private readonly notificationService?: NotificationService,
   ) {}
 
   async getOrdersByUserId(
@@ -284,6 +287,27 @@ export class BillService {
       `Checkout success for user: ${userId}, billId: ${bill.id}, status: ${billStatus}`,
     );
 
+    // Create notification for user about new order
+    try {
+      await this.notificationService?.createNotification({
+        recipientId: userId,
+        title: 'Đơn hàng đã được tạo',
+        description: `Đơn hàng #${bill.billCode} đã được tạo.`,
+        type: ENotificationType.ORDER,
+        url: `/client/bills/${bill.id}`,
+      });
+
+      await this.notificationService?.createNotification({
+        recipientId: 0,
+        title: 'Đơn hàng mới',
+        description: `Đơn hàng #${bill.billCode} cần xử lý.`,
+        type: ENotificationType.ORDER,
+        url: `/admin/bills/${bill.id}`,
+      });
+    } catch (err) {
+      this.logger.warn('Failed to create notification: ' + err?.message);
+    }
+
     if (checkoutData.paymentMethod === EPaymentMethod.CASH) {
       return {
         success: true,
@@ -315,7 +339,13 @@ export class BillService {
 
     const bill = await this.billRepository.findOne({
       where: { billCode },
-      relations: ['items', 'items.product', 'items.product.images', 'payment'],
+      relations: [
+        'items',
+        'items.product',
+        'items.product.images',
+        'payment',
+        'customer',
+      ],
     });
 
     if (!bill) {
@@ -331,6 +361,23 @@ export class BillService {
       }
 
       await this.billRepository.save(bill);
+
+      // Notify customer about successful payment
+      try {
+        if (bill.customer && bill.customer.id) {
+          await this.notificationService?.createNotification({
+            recipientId: bill.customer.id,
+            title: 'Thanh toán thành công',
+            description: `Đơn hàng #${bill.billCode} đã thanh toán thành công.`,
+            type: ENotificationType.ORDER,
+            url: `/client/bills/${bill.id}`,
+          });
+        }
+      } catch (err) {
+        this.logger.warn(
+          'Failed to create payment success notification: ' + err?.message,
+        );
+      }
       return {
         success: true,
         message: 'Thanh toán thành công',
@@ -387,6 +434,19 @@ export class BillService {
 
     bill.status = EBillStatus.CANCELLED;
     await this.billRepository.save(bill);
+    try {
+      if (bill.customer && bill.customer.id) {
+        await this.notificationService?.createNotification({
+          recipientId: bill.customer.id,
+          title: 'Đơn hàng đã bị hủy',
+          description: `Đơn hàng #${bill.billCode} đã được hủy.`,
+          type: ENotificationType.ORDER,
+          url: `/client/bills/${bill.id}`,
+        });
+      }
+    } catch (err) {
+      this.logger.warn('Failed to create cancel notification: ' + err?.message);
+    }
     if (bill.payment && bill.payment.paymentStatus === EPaymentStatus.PENDING) {
       bill.payment.paymentStatus = EPaymentStatus.FAILED;
       await this.paymentRepository.save(bill.payment);
