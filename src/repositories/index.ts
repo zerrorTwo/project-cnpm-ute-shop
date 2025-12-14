@@ -14,6 +14,10 @@ import { VoucherRepository } from './voucher.repository';
 import { LoyaltyPointRepository } from './loyalty-point.repository';
 import { CommentRepository } from './comment.repository';
 import { FavouriteRepository } from './favourite.repository';
+import { LineItem } from 'src/entities/line-item.entity';
+import { LineItemRepository } from './line-item.repository';
+import { SerialProductRepository } from './serial-product.repository';
+import { NotificationRepository } from './notification.repository';
 
 const Repositories = [
   UserRepository,
@@ -30,6 +34,9 @@ const Repositories = [
   LoyaltyPointRepository,
   CommentRepository,
   FavouriteRepository,
+  LineItemRepository,
+  SerialProductRepository,
+  NotificationRepository,
 ];
 
 export {
@@ -47,6 +54,9 @@ export {
   LoyaltyPointRepository,
   CommentRepository,
   FavouriteRepository,
+  LineItemRepository,
+  SerialProductRepository,
+  NotificationRepository,
 };
 
 export default Repositories;

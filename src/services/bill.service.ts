@@ -23,6 +23,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { VNPayService } from './vnpay.service';
 import { ProductCode } from 'vnpay';
+import { LineItemRepository } from 'src/repositories/line-item.repository';
+import { DashBoardResponseDto } from 'src/dtos/response/DashBoardResponseDto';
+import { ProductBestSellingDto } from 'src/dtos/request/ProductBestSellingDto';
+import { User } from 'src/entities';
+import { UserRepository } from 'src/repositories/user.repository';
+import { NotificationService } from './notification.service';
+import { ENotificationType } from 'src/entities/notification.entity';
 
 @Injectable()
 export class BillService {
@@ -34,9 +41,13 @@ export class BillService {
     private readonly productRepository: ProductRepository,
     private readonly paymentRepository: PaymentRepository,
     private readonly commentRepository: CommentRepository,
+    private readonly userRepository: UserRepository,
     @InjectRepository(LineItem)
     private readonly lineItemRepository: Repository<LineItem>,
+
+    private readonly lineItemRepository2: LineItemRepository,
     @Optional() private readonly vnpayService?: VNPayService,
+    private readonly notificationService?: NotificationService,
   ) {}
 
   async getOrdersByUserId(
@@ -276,6 +287,27 @@ export class BillService {
       `Checkout success for user: ${userId}, billId: ${bill.id}, status: ${billStatus}`,
     );
 
+    // Create notification for user about new order
+    try {
+      await this.notificationService?.createNotification({
+        recipientId: userId,
+        title: 'Đơn hàng đã được tạo',
+        description: `Đơn hàng #${bill.billCode} đã được tạo.`,
+        type: ENotificationType.ORDER,
+        url: `/client/bills/${bill.id}`,
+      });
+
+      await this.notificationService?.createNotification({
+        recipientId: 0,
+        title: 'Đơn hàng mới',
+        description: `Đơn hàng #${bill.billCode} cần xử lý.`,
+        type: ENotificationType.ORDER,
+        url: `/admin/bills/${bill.id}`,
+      });
+    } catch (err) {
+      this.logger.warn('Failed to create notification: ' + err?.message);
+    }
+
     if (checkoutData.paymentMethod === EPaymentMethod.CASH) {
       return {
         success: true,
@@ -307,7 +339,13 @@ export class BillService {
 
     const bill = await this.billRepository.findOne({
       where: { billCode },
-      relations: ['items', 'items.product', 'items.product.images', 'payment'],
+      relations: [
+        'items',
+        'items.product',
+        'items.product.images',
+        'payment',
+        'customer',
+      ],
     });
 
     if (!bill) {
@@ -323,6 +361,23 @@ export class BillService {
       }
 
       await this.billRepository.save(bill);
+
+      // Notify customer about successful payment
+      try {
+        if (bill.customer && bill.customer.id) {
+          await this.notificationService?.createNotification({
+            recipientId: bill.customer.id,
+            title: 'Thanh toán thành công',
+            description: `Đơn hàng #${bill.billCode} đã thanh toán thành công.`,
+            type: ENotificationType.ORDER,
+            url: `/client/bills/${bill.id}`,
+          });
+        }
+      } catch (err) {
+        this.logger.warn(
+          'Failed to create payment success notification: ' + err?.message,
+        );
+      }
       return {
         success: true,
         message: 'Thanh toán thành công',
@@ -379,6 +434,19 @@ export class BillService {
 
     bill.status = EBillStatus.CANCELLED;
     await this.billRepository.save(bill);
+    try {
+      if (bill.customer && bill.customer.id) {
+        await this.notificationService?.createNotification({
+          recipientId: bill.customer.id,
+          title: 'Đơn hàng đã bị hủy',
+          description: `Đơn hàng #${bill.billCode} đã được hủy.`,
+          type: ENotificationType.ORDER,
+          url: `/client/bills/${bill.id}`,
+        });
+      }
+    } catch (err) {
+      this.logger.warn('Failed to create cancel notification: ' + err?.message);
+    }
     if (bill.payment && bill.payment.paymentStatus === EPaymentStatus.PENDING) {
       bill.payment.paymentStatus = EPaymentStatus.FAILED;
       await this.paymentRepository.save(bill.payment);
@@ -456,5 +524,158 @@ export class BillService {
         'Không thể tạo lại link thanh toán. Vui lòng thử lại.',
       );
     }
+  }
+
+  async countBillsByStatus(status: EBillStatus): Promise<number> {
+    return this.billRepository.countBillsByStatus(status);
+  }
+
+  async totalProfit(status: EBillStatus): Promise<number> {
+    return this.lineItemRepository2.totalProfit(status);
+  }
+
+  async totalRevenue(status: EBillStatus): Promise<number> {
+    return this.billRepository.totalRevenue(status);
+  }
+
+  async getRevenueOrProfitByTime(
+    startDate: Date,
+    endDate: Date,
+    status: EBillStatus,
+    type: 0 | 1,
+  ): Promise<DashBoardResponseDto> {
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    const bills = await this.billRepository.revenueByTime(start, end, status);
+
+    const diffDays = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+
+    const resultMap = new Map<string, number>();
+
+    for (const bill of bills) {
+      const date = new Date(bill.createdAt);
+      let key = '';
+
+      if (diffDays <= 1) {
+        key = this.format(date, 'dd-MM-yyyy');
+      } else if (diffDays <= 30) {
+        key = this.format(date, 'dd-MM-yyyy');
+      } else if (diffDays <= 92) {
+        key = `Week ${this.getWeek(date)}, ${date.getFullYear()}`;
+      } else if (diffDays <= 365 * 2) {
+        key = this.format(date, 'MM-yyyy');
+      } else {
+        key = date.getFullYear().toString();
+      }
+
+      let amount = bill.total;
+
+      if (type === 1) {
+        for (const item of bill.items) {
+          amount -= item.quantity * item.product.originalPrice;
+        }
+      }
+
+      resultMap.set(key, (resultMap.get(key) || 0) + amount);
+    }
+
+    return {
+      time: Array.from(resultMap.keys()),
+      data: Array.from(resultMap.values()).map((v) => v.toString()),
+    };
+  }
+
+  async getProductBestSellingByTime(
+    startDate: Date,
+    endDate: Date,
+    status: EBillStatus,
+  ): Promise<ProductBestSellingDto[]> {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    const rawData = await this.lineItemRepository2.topSeller(
+      start,
+      end,
+      EBillStatus.COMPLETED,
+    );
+
+    return Promise.all(
+      rawData.map(async (item) => {
+        const product = await this.productRepository.findById(Number(item.id));
+        return {
+          id: Number(item.id),
+          name: item.name,
+          unitPrice: Number(item.unitPrice),
+          quantitySold: Number(item.quantitySold),
+          totalAmount: Number(item.totalAmount),
+          url: product?.images?.[0]?.url || null,
+        };
+      }),
+    );
+  }
+
+  async getNewUserByTime(
+    startDate: Date,
+    endDate: Date,
+  ): Promise<DashBoardResponseDto> {
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    const users = await this.userRepository.getNewUserByTime(start, end);
+
+    const diffDays = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+
+    const resultMap = new Map<string, number>();
+
+    for (const user of users) {
+      const date = new Date(user.createdAt);
+      let key = '';
+
+      if (diffDays <= 1) {
+        key = this.format(date, 'dd-MM-yyyy');
+      } else if (diffDays <= 30) {
+        key = this.format(date, 'dd-MM-yyyy');
+      } else if (diffDays <= 92) {
+        key = `Week ${this.getWeek(date)}, ${date.getFullYear()}`;
+      } else if (diffDays <= 365 * 2) {
+        key = this.format(date, 'MM-yyyy');
+      } else {
+        key = date.getFullYear().toString();
+      }
+
+      resultMap.set(key, (resultMap.get(key) || 0) + 1);
+    }
+
+    return {
+      time: Array.from(resultMap.keys()),
+      data: Array.from(resultMap.values()).map((v) => v.toString()),
+    };
+  }
+
+  private format(date: Date, pattern: string): string {
+    const dd = String(date.getDate()).padStart(2, '0');
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const yyyy = date.getFullYear();
+
+    if (pattern === 'dd-MM-yyyy') return `${dd}-${mm}-${yyyy}`;
+    if (pattern === 'MM-yyyy') return `${mm}-${yyyy}`;
+    return yyyy.toString();
+  }
+
+  private getWeek(date: Date): number {
+    const d = new Date(
+      Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
+    );
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
   }
 }

@@ -146,11 +146,24 @@ export class UserRepository {
       .getMany();
   }
 
- async updatePassword(email: string, newPassword: string): Promise<User> {
+  async updatePassword(email: string, newPassword: string): Promise<User> {
     const user = await this.findByEmail(email);
     if (!user) throw new Error('User not found');
 
     user.password = newPassword;
     return this.repository.save(user);
+  }
+
+  async getNewUserByTime(startDate: Date, endDate: Date): Promise<User[]> {
+    const result = await this.repository
+      .createQueryBuilder('u')
+      .where('u.createdAt BETWEEN :start AND :end', {
+        start: startDate,
+        end: endDate,
+      })
+      .orderBy('u.createdAt', 'ASC')
+      .getMany();
+
+    return result;
   }
 }

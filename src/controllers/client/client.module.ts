@@ -10,6 +10,7 @@ import { AuthService } from 'src/services/auth.service';
 import { AuthGuard } from 'src/utils/auth/auth.guard';
 import { MailModule } from 'src/mail/mail.module';
 import { GoogleStrategy } from 'src/controllers/client/google.strategy';
+import { NotificationModule } from 'src/notifications.module';
 import { Product } from 'src/entities/product.entity';
 import { LineItem } from 'src/entities/line-item.entity';
 import { DiscountCampaign } from 'src/entities/discount-campaign.entity';
@@ -26,6 +27,7 @@ import { Voucher } from 'src/entities/voucher.entity';
 import { LoyaltyPoint } from 'src/entities/loyalty-point.entity';
 import { Payment } from 'src/entities/payment.entity';
 import { Favourite } from 'src/entities/favourite.entity';
+import { Notification } from 'src/entities/notification.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -46,9 +48,11 @@ import { Favourite } from 'src/entities/favourite.entity';
       LoyaltyPoint,
       Payment,
       Favourite,
+      Notification,
     ]),
     MailModule,
     VnpayModule,
+    NotificationModule,
   ],
   controllers: [...Controllers],
   providers: [

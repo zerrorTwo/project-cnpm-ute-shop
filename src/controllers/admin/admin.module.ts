@@ -18,6 +18,8 @@ import { DetailConfiguration } from 'src/entities/other-configuration.entity';
 import { Cart } from 'src/entities/cart.entity';
 import { CartItem } from 'src/entities/cart-item.entity';
 import { Favourite } from 'src/entities/favourite.entity';
+import { Notification } from 'src/entities/notification.entity';
+import { NotificationModule } from 'src/notifications.module';
 
 @Module({
   imports: [
@@ -36,8 +38,10 @@ import { Favourite } from 'src/entities/favourite.entity';
       Cart,
       CartItem,
       Favourite,
+      Notification,
     ]),
     VnpayModule,
+    NotificationModule,
   ],
   controllers: [...Controllers],
   providers: [...Services, ...Repositories],

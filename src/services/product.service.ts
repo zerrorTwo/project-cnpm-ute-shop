@@ -512,4 +512,9 @@ export class ProductService {
 
     return parseInt(result?.count || '0', 10);
   }
+
+  async getQuantityOfProduct(): Promise<number> {
+    const result = await this.productRepository.getTotalProductQuantity();
+    return result;
+  }
 }

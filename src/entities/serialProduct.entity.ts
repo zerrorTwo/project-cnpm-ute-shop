@@ -20,11 +20,9 @@ export class SerialProduct {
   @Column()
   serial: string;
 
-  // Many serials → one product
   @ManyToOne(() => Product, (product) => product.serialProducts)
   product: Product;
 
-  // Many serials → one line item (nếu bán theo serial riêng)
   @ManyToOne(() => LineItem, (lineItem) => lineItem.serialProducts)
   lineItem: LineItem;
 
