@@ -18,6 +18,7 @@ import { LineItem } from 'src/entities/line-item.entity';
 import { LineItemRepository } from './line-item.repository';
 import { SerialProductRepository } from './serial-product.repository';
 import { NotificationRepository } from './notification.repository';
+import { ChatMessageRepository } from './chat-message.repository';
 
 const Repositories = [
   UserRepository,
@@ -37,6 +38,7 @@ const Repositories = [
   LineItemRepository,
   SerialProductRepository,
   NotificationRepository,
+  ChatMessageRepository,
 ];
 
 export {
@@ -57,6 +59,7 @@ export {
   LineItemRepository,
   SerialProductRepository,
   NotificationRepository,
+  ChatMessageRepository,
 };
 
 export default Repositories;

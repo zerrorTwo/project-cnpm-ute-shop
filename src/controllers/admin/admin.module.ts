@@ -20,6 +20,7 @@ import { CartItem } from 'src/entities/cart-item.entity';
 import { Favourite } from 'src/entities/favourite.entity';
 import { Notification } from 'src/entities/notification.entity';
 import { NotificationModule } from 'src/notifications.module';
+import { ChatMessage } from 'src/entities/chat-message.entity';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { NotificationModule } from 'src/notifications.module';
       CartItem,
       Favourite,
       Notification,
+      ChatMessage,
     ]),
     VnpayModule,
     NotificationModule,

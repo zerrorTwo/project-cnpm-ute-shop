@@ -6,6 +6,7 @@ import { ReviewController } from './review.controller';
 import { CommentController } from './comment.controller';
 import { FavouriteController } from './favourite.controller';
 import { NotificationController } from './notification.controller';
+import { ChatController } from './chat.controller';
 
 const Controllers = [
   AuthController,
@@ -16,6 +17,7 @@ const Controllers = [
   CommentController,
   FavouriteController,
   NotificationController,
+  ChatController,
 ];
 
 export default Controllers;
