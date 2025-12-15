@@ -13,6 +13,9 @@ export enum ENotificationType {
   COMMENT = 'COMMENT',
   EVENT = 'EVENT',
   REVIEW = 'REVIEW',
+  POST = 'POST',
+  SYSTEM = 'SYSTEM',
+  PROMOTION = 'PROMOTION',
 }
 
 @Entity('notifications')
