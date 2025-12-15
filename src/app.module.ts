@@ -8,6 +8,8 @@ import { APP_GUARD } from '@nestjs/core';
 import { AdminModule } from './controllers/admin/admin.module';
 import { ClientModule } from './controllers/client/client.module';
 import { NotificationModule } from './notifications.module';
+import { CloudinaryModule } from './cloudinary/cloudinary.module';
+import { SharedModule } from './shared.module';
 import { AuthGuard } from './utils/auth/auth.guard';
 import { User } from './entities/user.entity';
 import { LoggerMiddleware } from './middlewares/logger.middleware';
@@ -43,6 +45,8 @@ import { LoggerService } from './services/logger.service';
       }),
       inject: [ConfigService],
     }),
+    CloudinaryModule,
+    SharedModule,
     AdminModule,
     ClientModule,
     NotificationModule,

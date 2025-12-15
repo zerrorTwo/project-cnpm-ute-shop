@@ -28,6 +28,7 @@ import { LoyaltyPoint } from 'src/entities/loyalty-point.entity';
 import { Payment } from 'src/entities/payment.entity';
 import { Favourite } from 'src/entities/favourite.entity';
 import { Notification } from 'src/entities/notification.entity';
+import { ChatMessage } from 'src/entities/chat-message.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -49,6 +50,7 @@ import { Notification } from 'src/entities/notification.entity';
       Payment,
       Favourite,
       Notification,
+      ChatMessage,
     ]),
     MailModule,
     VnpayModule,
