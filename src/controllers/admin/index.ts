@@ -6,6 +6,7 @@ import { AdminCommentController } from './comment.controller';
 import { DashboardController } from './dashboard.controller';
 import { AdminNotificationController } from './notification.controller';
 import { ChatController } from './chat.controller';
+import { AdminBillController } from './order.controller';
 
 const Controllers = [
   ProductController,
@@ -16,6 +17,7 @@ const Controllers = [
   DashboardController,
   AdminNotificationController,
   ChatController,
+  AdminBillController,
 ];
 
 export default Controllers;

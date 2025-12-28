@@ -44,7 +44,7 @@ export class BillController {
   @ApiQuery({
     name: 'status',
     required: false,
-    enum: ['PENDING', 'PAID', 'CANCELLED'],
+    enum: ['PENDING', 'COMPLETED', 'CANCELLED'],
   })
   @ApiQuery({
     name: 'search',

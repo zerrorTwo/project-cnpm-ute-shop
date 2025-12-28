@@ -30,6 +30,7 @@ import { User } from 'src/entities';
 import { UserRepository } from 'src/repositories/user.repository';
 import { NotificationService } from './notification.service';
 import { ENotificationType } from 'src/entities/notification.entity';
+import { UpdateBillStatusDto } from 'src/dtos/request/update-bill-status.dto';
 
 @Injectable()
 export class BillService {
@@ -362,7 +363,6 @@ export class BillService {
 
       await this.billRepository.save(bill);
 
-      // Notify customer about successful payment
       try {
         if (bill.customer && bill.customer.id) {
           await this.notificationService?.createNotification({
@@ -418,7 +418,7 @@ export class BillService {
     if (bill.customer.id !== userId) {
       throw new BadRequestException('Bạn không có quyền hủy đơn hàng này');
     }
-    if (bill.status === EBillStatus.PAID) {
+    if (bill.payment.paymentStatus === EPaymentStatus.SUCCESS) {
       throw new BadRequestException(
         'Không thể hủy đơn hàng đã thanh toán. Vui lòng liên hệ CSKH.',
       );
@@ -479,7 +479,7 @@ export class BillService {
       );
     }
 
-    if (bill.status === EBillStatus.PAID) {
+    if (bill.payment.paymentStatus === EPaymentStatus.SUCCESS) {
       throw new BadRequestException('Đơn hàng đã được thanh toán');
     }
 
@@ -600,7 +600,7 @@ export class BillService {
     const rawData = await this.lineItemRepository2.topSeller(
       start,
       end,
-      EBillStatus.PAID,
+      EBillStatus.COMPLETED,
     );
 
     return Promise.all(
@@ -677,5 +677,102 @@ export class BillService {
     d.setUTCDate(d.getUTCDate() + 4 - dayNum);
     const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
     return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  }
+
+  async getAllBills(
+    page: number = 1,
+    limit: number = 10,
+    search?: string,
+    status?: EBillStatus,
+  ) {
+    const { data, total } = await this.billRepository.findAllWithPagination(
+      page,
+      limit,
+      search,
+      status,
+    );
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+  async updateBillStatus(id: number, updateDto: UpdateBillStatusDto) {
+    const bill = await this.billRepository.findOne({
+      where: { id },
+      relations: ['items', 'items.product', 'payment', 'customer'],
+    });
+
+    if (!bill) {
+      throw new NotFoundException('Không tìm thấy đơn hàng');
+    }
+
+    const oldStatus = bill.status;
+    const newStatus = updateDto.status;
+
+    if (oldStatus === newStatus) {
+      return bill;
+    }
+
+    if (
+      newStatus === EBillStatus.CANCELLED &&
+      oldStatus !== EBillStatus.CANCELLED
+    ) {
+      for (const item of bill.items) {
+        item.product.quantityStock += item.quantity;
+        await this.productRepository.repository.save(item.product);
+      }
+      this.logger.log(`Admin cancelled bill ${bill.id}, stock restored.`);
+
+      if (
+        bill.payment &&
+        bill.payment.paymentStatus === EPaymentStatus.PENDING
+      ) {
+        bill.payment.paymentStatus = EPaymentStatus.FAILED;
+        await this.paymentRepository.save(bill.payment);
+      }
+    }
+    bill.status = newStatus;
+    if (
+      newStatus === EBillStatus.COMPLETED &&
+      bill.paymentMethod === EPaymentMethod.CASH
+    ) {
+      if (bill.payment) {
+        bill.payment.paymentStatus = EPaymentStatus.SUCCESS;
+        await this.paymentRepository.save(bill.payment);
+      }
+    }
+    const savedBill = await this.billRepository.save(bill);
+    try {
+      if (bill.customer) {
+        await this.notificationService?.createNotification({
+          recipientId: bill.customer.id,
+          title: 'Cập nhật trạng thái đơn hàng',
+          description: `Đơn hàng #${bill.billCode} của bạn đã chuyển sang trạng thái: ${newStatus}`,
+          type: ENotificationType.ORDER,
+          url: `/client/bills/${bill.id}`,
+        });
+      }
+    } catch (err) {
+      this.logger.warn('Failed to send notification: ' + err.message);
+    }
+
+    return savedBill;
+  }
+  async getBillDetail(id: number) {
+    const bill = await this.billRepository.findOne({
+      where: { id },
+      relations: [
+        'customer',
+        'payment',
+        'items',
+        'items.product',
+        'items.product.images',
+      ],
+    });
+    return bill;
   }
 }
