@@ -10,9 +10,7 @@ export class BillRepository {
     private readonly repository: Repository<Bill>,
   ) {}
 
-  /**
-   * Tìm bill theo ID
-   */
+
   async findById(id: number): Promise<Bill | null> {
     return this.repository.findOne({
       where: { id },
@@ -26,23 +24,16 @@ export class BillRepository {
     });
   }
 
-  /**
-   * Tìm bill với điều kiện tùy chỉnh
-   */
+
   async findOne(options: any): Promise<Bill | null> {
     return this.repository.findOne(options);
   }
 
-  /**
-   * Lưu bill
-   */
   async save(bill: Bill): Promise<Bill> {
     return this.repository.save(bill);
   }
 
-  /**
-   * Tìm bills theo user ID
-   */
+
   async findByUserId(userId: number): Promise<Bill[]> {
     return this.repository.find({
       where: { customer: { id: userId } },
@@ -57,9 +48,7 @@ export class BillRepository {
     });
   }
 
-  /**
-   * Tìm bills theo user ID với phân trang và tìm kiếm
-   */
+
   async findByUserIdWithPagination(
     userId: number,
     page: number = 1,
@@ -76,12 +65,10 @@ export class BillRepository {
       .leftJoinAndSelect('product.images', 'images')
       .where('customer.id = :userId', { userId });
 
-    // Filter theo status
     if (status) {
       qb.andWhere('bill.status = :status', { status });
     }
 
-    // Tìm kiếm theo tên sản phẩm hoặc mã đơn
     if (search) {
       qb.andWhere(
         '(product.productName LIKE :search OR bill.billCode LIKE :search)',
@@ -89,10 +76,8 @@ export class BillRepository {
       );
     }
 
-    // Đếm tổng số
     const total = await qb.getCount();
 
-    // Phân trang
     const data = await qb
       .orderBy('bill.createdAt', 'DESC')
       .skip((page - 1) * limit)
@@ -102,25 +87,19 @@ export class BillRepository {
     return { data, total };
   }
 
-  /**
-   * Tạo bill mới
-   */
+
   async create(data: Partial<Bill>): Promise<Bill> {
     const bill = this.repository.create(data);
     return this.repository.save(bill);
   }
 
-  /**
-   * Cập nhật bill
-   */
+
   async update(id: number, data: Partial<Bill>): Promise<Bill | null> {
     await this.repository.update(id, data);
     return this.findById(id);
   }
 
-  /**
-   * Xóa bill
-   */
+
   async delete(id: number): Promise<boolean> {
     const result = await this.repository.delete(id);
     return (result.affected ?? 0) > 0;
@@ -159,4 +138,40 @@ export class BillRepository {
 
     return Number(result.total) || 0;
   }
+  async findAllWithPagination(
+    page: number = 1,
+    limit: number = 10,
+    search?: string,
+    status?: EBillStatus,
+  ): Promise<{ data: Bill[]; total: number }> {
+    const qb = this.repository
+      .createQueryBuilder('bill')
+      .leftJoinAndSelect('bill.customer', 'customer')
+      .leftJoinAndSelect('bill.payment', 'payment')
+      .leftJoinAndSelect('bill.items', 'items')
+      .leftJoinAndSelect('items.product', 'product')
+      .leftJoinAndSelect('product.images', 'images');
+
+    if (status) {
+      qb.andWhere('bill.status = :status', { status });
+    }
+
+    if (search) {
+      qb.andWhere(
+        '(bill.billCode LIKE :search OR bill.receiverName LIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    const total = await qb.getCount();
+
+    const data = await qb
+      .orderBy('bill.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getMany();
+
+    return { data, total };
+  }
+  
 }

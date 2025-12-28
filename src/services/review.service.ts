@@ -14,6 +14,7 @@ import { CreateReviewDto, ReviewResponseDto } from '../dtos/review.dto';
 import { EVoucherType, EVoucherStatus } from '../entities/voucher.entity';
 import { EPointTransactionType } from '../entities/loyalty-point.entity';
 import { EBillStatus } from '../entities/bill.entity';
+import { EPaymentStatus } from 'src/entities/payment.entity';
 
 @Injectable()
 export class ReviewService {
@@ -60,7 +61,7 @@ export class ReviewService {
     }
 
     // Chỉ cho phép đánh giá đơn đã thanh toán
-    if (bill.status !== EBillStatus.PAID) {
+    if (bill.payment.paymentStatus !== EPaymentStatus.SUCCESS) {
       throw new BadRequestException(
         'Chỉ có thể đánh giá sản phẩm từ đơn hàng đã thanh toán',
       );

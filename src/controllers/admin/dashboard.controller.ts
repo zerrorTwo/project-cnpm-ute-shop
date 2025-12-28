@@ -41,8 +41,8 @@ export class DashboardController {
       quantityBillNeedToProcess:
         (await this.billService.countBillsByStatus(EBillStatus.PENDING)) +
         (await this.billService.countBillsByStatus(EBillStatus.CONFIRMED)),
-      totalProfit: await this.billService.totalProfit(EBillStatus.PAID),
-      totalRevenue: await this.billService.totalRevenue(EBillStatus.PAID),
+      totalProfit: await this.billService.totalProfit(EBillStatus.COMPLETED),
+      totalRevenue: await this.billService.totalRevenue(EBillStatus.COMPLETED),
     };
     return Builder<SuccessResponse>()
       .data(data)
@@ -57,7 +57,7 @@ export class DashboardController {
     const result = await this.billService.getRevenueOrProfitByTime(
       dto.startDate,
       dto.endDate,
-      EBillStatus.PAID,
+      EBillStatus.COMPLETED,
       0,
     );
 
@@ -74,7 +74,7 @@ export class DashboardController {
     const result = await this.billService.getRevenueOrProfitByTime(
       dto.startDate,
       dto.endDate,
-      EBillStatus.PAID,
+      EBillStatus.COMPLETED,
       1,
     );
 
@@ -102,7 +102,7 @@ export class DashboardController {
     const result = await this.billService.getProductBestSellingByTime(
       dto.startDate,
       dto.endDate,
-      EBillStatus.PAID,
+      EBillStatus.COMPLETED,
     );
 
     return Builder<SuccessResponse>()

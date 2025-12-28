@@ -45,8 +45,7 @@ export class LineItemRepository {
     const startStr = formatDateStart(startDate);
     const endStr = formatDateEnd(endDate);
 
-    return this.repository.query(sql, [startStr, endStr, 'PAID']);
-    // return this.repository.query(sql, ['2025-11-30', '2025-12-15', 'PAID']);
+    return this.repository.query(sql, [startStr, endStr, 'COMPLETED']);
   }
 }
 

@@ -505,7 +505,7 @@ export class ProductService {
       .innerJoin('bill.items', 'lineItem')
       .where('lineItem.product.id = :productId', { productId })
       .andWhere('bill.status IN (:...statuses)', {
-        statuses: ['PAID', 'SHIPPING'],
+        statuses: ['COMPLETED', 'SHIPPING'],
       })
       .select('COUNT(DISTINCT bill.user_id)', 'count')
       .getRawOne();
