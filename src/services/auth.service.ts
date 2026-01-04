@@ -126,6 +126,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         fullName: user.fullName,
+        role: user.role,
       },
     };
   }
@@ -201,6 +202,7 @@ export class AuthService {
       fullName: user.fullName,
       phone: user.phone,
       avatar: user.avatar,
+      role: user.role,
       createdAt: user.createdAt,
     };
   }

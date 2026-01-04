@@ -12,6 +12,7 @@ import { Comment } from '../entities/comment.entity';
 import { Cart } from '../entities/cart.entity';
 import { Voucher } from '../entities/voucher.entity';
 import { LoyaltyPoint } from '../entities/loyalty-point.entity';
+import { UserRole } from './enums/user-role.enum';
 
 @Entity('users')
 export class User {
@@ -33,6 +34,9 @@ export class User {
 
   @Column({ nullable: true })
   avatar: string;
+
+  @Column({ type: 'enum', enum: UserRole, default: UserRole.USER })
+  role: UserRole;
 
   @Column({ type: 'int', default: 0 })
   totalLoyaltyPoints: number; // Tổng điểm tích lũy hiện tại
