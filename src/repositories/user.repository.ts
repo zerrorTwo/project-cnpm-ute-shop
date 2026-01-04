@@ -65,7 +65,7 @@ export class UserRepository {
     const [data, total] = await this.repository.findAndCount({
       skip,
       take: limit,
-      select: ['id', 'email', 'fullName', 'createdAt', 'updatedAt'],
+      select: ['id', 'email', 'fullName', 'role', 'createdAt', 'updatedAt'],
       order: { createdAt: 'DESC' },
     });
 
@@ -141,7 +141,13 @@ export class UserRepository {
       .where('user.email LIKE :keyword OR user.fullName LIKE :keyword', {
         keyword: `%${keyword}%`,
       })
-      .select(['user.id', 'user.email', 'user.fullName'])
+      .select([
+        'user.id',
+        'user.email',
+        'user.fullName',
+        'user.role',
+        'user.createdAt',
+      ])
       .limit(20)
       .getMany();
   }
