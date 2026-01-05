@@ -562,7 +562,7 @@ export class BillService {
 
       if (diffDays <= 1) {
         key = this.format(date, 'dd-MM-yyyy');
-      } else if (diffDays <= 30) {
+      } else if (diffDays <= 31) {
         key = this.format(date, 'dd-MM-yyyy');
       } else if (diffDays <= 92) {
         key = `Week ${this.getWeek(date)}, ${date.getFullYear()}`;
@@ -576,7 +576,7 @@ export class BillService {
 
       if (type === 1) {
         for (const item of bill.items) {
-          amount -= item.quantity * item.product.originalPrice;
+          amount = amount - item.quantity * item.product.originalPrice;
         }
       }
 
