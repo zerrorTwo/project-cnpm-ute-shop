@@ -7,6 +7,7 @@ import { CommentController } from './comment.controller';
 import { FavouriteController } from './favourite.controller';
 import { NotificationController } from './notification.controller';
 import { ChatController } from './chat.controller';
+import { CategoryClientController } from './category.controller';
 
 const Controllers = [
   AuthController,
@@ -18,6 +19,7 @@ const Controllers = [
   FavouriteController,
   NotificationController,
   ChatController,
+  CategoryClientController,
 ];
 
 export default Controllers;
