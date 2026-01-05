@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Brackets } from 'typeorm';
 import { Product } from 'src/entities/product.entity';
 
 @Injectable()
@@ -136,6 +136,9 @@ export class ProductRepository {
       sortOrder?: 'ASC' | 'DESC';
     },
   ): Promise<{ data: Product[]; total: number }> {
+    if (!page || page < 1) page = 1;
+    if (!limit || limit < 1) limit = 10;
+
     const qb = this.repository
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.images', 'images')
@@ -144,23 +147,41 @@ export class ProductRepository {
       .leftJoinAndSelect('product.discountCampaign', 'discountCampaign');
 
     if (filters.search) {
-      qb.andWhere('product.productName LIKE :search', {
-        search: `%${filters.search}%`,
-      });
-      qb.andWhere('product.brand.brandName LIKE :search', {
-        search: `%${filters.search}%`,
-      });
-      qb.andWhere('product.category.categoryName LIKE :search', {
-        search: `%${filters.search}%`,
-      });
+      const search = `%${filters.search}%`;
+      qb.andWhere(
+        new Brackets((qb2) => {
+          qb2
+            .where('product.productName LIKE :search', { search })
+            .orWhere('brand.brandName LIKE :search', { search })
+            .orWhere('category.categoryName LIKE :search', { search });
+        }),
+      );
     }
 
     qb.orderBy('product.id', filters.sortOrder || 'DESC');
 
-    // Get total count
-    const total = await qb.getCount();
+    const countQb = this.repository
+      .createQueryBuilder('product')
+      .leftJoin('product.brand', 'brand')
+      .leftJoin('product.category', 'category');
 
-    // Apply pagination
+    if (filters.search) {
+      const search = `%${filters.search}%`;
+      countQb.andWhere(
+        new Brackets((qb2) => {
+          qb2
+            .where('product.productName LIKE :search', { search })
+            .orWhere('brand.brandName LIKE :search', { search })
+            .orWhere('category.categoryName LIKE :search', { search });
+        }),
+      );
+    }
+
+    const raw = await countQb
+      .select('COUNT(DISTINCT product.id)', 'total')
+      .getRawOne();
+    const total = Number(raw?.total) || 0;
+
     qb.skip((page - 1) * limit).take(limit);
 
     const data = await qb.getMany();
