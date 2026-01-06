@@ -106,4 +106,22 @@ export class ReviewController {
       .status(200)
       .build();
   }
+
+  @UseGuards(AuthGuard)
+  @Get('my-reviews')
+  @ApiOperation({ summary: 'Lấy danh sách reviews của user (để filter sản phẩm đã đánh giá)' })
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'Lấy danh sách reviews thành công',
+    type: SuccessResponse,
+  })
+  async getUserReviews(@CurrentUser('id') userId: number) {
+    const result = await this.reviewService.getUserReviews(userId);
+    return Builder<SuccessResponse>()
+      .data(result)
+      .message(SuccessMessages.GET_SUCCESSFULLY)
+      .status(200)
+      .build();
+  }
 }

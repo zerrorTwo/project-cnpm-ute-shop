@@ -4,6 +4,7 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+import { Not, IsNull } from 'typeorm';
 import { CommentRepository } from '../repositories/comment.repository';
 import { VoucherRepository } from '../repositories/voucher.repository';
 import { LoyaltyPointRepository } from '../repositories/loyalty-point.repository';
@@ -209,13 +210,34 @@ export class ReviewService {
 
     return {
       totalPoints: user?.totalLoyaltyPoints || 0,
-      history: history.map((h) => ({
+      transactions: history.map((h) => ({
+        id: h.id,
+        userId: userId,
+        transactionType: h.transactionType,
         points: h.points,
-        type: h.transactionType,
         description: h.description,
         createdAt: h.createdAt,
       })),
     };
+  }
+
+  /**
+   * Lấy danh sách reviews của user (chỉ productId và billId để filter)
+   */
+  async getUserReviews(userId: number) {
+    const reviews = await this.commentRepository.find({
+      where: {
+        customer: { id: userId },
+        rating: Not(IsNull()), // Chỉ lấy reviews (có rating), không lấy comments
+      },
+      relations: ['product', 'bill'],
+    });
+
+    // Trả về danh sách productId và billId để filter
+    return reviews.map((review) => ({
+      productId: review.product.id,
+      billId: review.bill.id,
+    }));
   }
 
   private async updateProductRating(productId: number) {
