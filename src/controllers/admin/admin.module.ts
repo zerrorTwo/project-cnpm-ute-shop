@@ -21,6 +21,7 @@ import { Favourite } from 'src/entities/favourite.entity';
 import { Notification } from 'src/entities/notification.entity';
 import { NotificationModule } from 'src/notifications.module';
 import { ChatMessage } from 'src/entities/chat-message.entity';
+import { Voucher } from 'src/entities/voucher.entity';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { ChatMessage } from 'src/entities/chat-message.entity';
       Favourite,
       Notification,
       ChatMessage,
+      Voucher,
     ]),
     VnpayModule,
     NotificationModule,

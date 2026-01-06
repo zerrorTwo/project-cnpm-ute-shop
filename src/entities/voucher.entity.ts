@@ -34,7 +34,7 @@ export class Voucher {
   value: number; // Giá trị giảm (% hoặc số tiền)
 
   @Column({ type: 'double', nullable: true })
-  maxDiscount: number; // Giảm tối đa (cho voucher %)
+  maxDiscount: number | null; // Giảm tối đa (cho voucher %)
 
   @Column({ type: 'double', default: 0 })
   minOrderValue: number; // Giá trị đơn hàng tối thiểu
@@ -50,7 +50,7 @@ export class Voucher {
   expiryDate: Date;
 
   @Column({ type: 'text', nullable: true })
-  description: string;
+  description: string | null;
 
   @ManyToOne(() => User, (user) => user.vouchers)
   user: User;
