@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, Repository } from 'typeorm';
+import { Between, In, Repository } from 'typeorm';
 import { Bill, EBillStatus } from '../entities/bill.entity';
 
 @Injectable()
@@ -9,7 +9,6 @@ export class BillRepository {
     @InjectRepository(Bill)
     private readonly repository: Repository<Bill>,
   ) {}
-
 
   async findById(id: number): Promise<Bill | null> {
     return this.repository.findOne({
@@ -24,7 +23,6 @@ export class BillRepository {
     });
   }
 
-
   async findOne(options: any): Promise<Bill | null> {
     return this.repository.findOne(options);
   }
@@ -32,7 +30,6 @@ export class BillRepository {
   async save(bill: Bill): Promise<Bill> {
     return this.repository.save(bill);
   }
-
 
   async findByUserId(userId: number): Promise<Bill[]> {
     return this.repository.find({
@@ -47,7 +44,6 @@ export class BillRepository {
       order: { createdAt: 'DESC' },
     });
   }
-
 
   async findByUserIdWithPagination(
     userId: number,
@@ -87,22 +83,34 @@ export class BillRepository {
     return { data, total };
   }
 
-
   async create(data: Partial<Bill>): Promise<Bill> {
     const bill = this.repository.create(data);
     return this.repository.save(bill);
   }
-
 
   async update(id: number, data: Partial<Bill>): Promise<Bill | null> {
     await this.repository.update(id, data);
     return this.findById(id);
   }
 
-
   async delete(id: number): Promise<boolean> {
     const result = await this.repository.delete(id);
     return (result.affected ?? 0) > 0;
+  }
+
+  async findByIds(ids: number[]): Promise<Bill[]> {
+    if (!ids.length) return [];
+
+    return this.repository.find({
+      where: { id: In(ids) },
+      relations: [
+        'customer',
+        'payment',
+        'items',
+        'items.product',
+        'items.product.images',
+      ],
+    });
   }
 
   async countBillsByStatus(status: EBillStatus): Promise<number> {
@@ -173,5 +181,17 @@ export class BillRepository {
 
     return { data, total };
   }
-  
+
+  async findAllForSearch(): Promise<Bill[]> {
+    return this.repository.find({
+      relations: [
+        'customer',
+        'payment',
+        'items',
+        'items.product',
+        'items.product.images',
+      ],
+      order: { createdAt: 'DESC' },
+    });
+  }
 }

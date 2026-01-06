@@ -9,6 +9,7 @@ import { AdminNotificationController } from './notification.controller';
 import { ChatController } from './chat.controller';
 import { AdminBillController } from './order.controller';
 import { UserController } from './user.controller';
+import { VoucherController } from './voucher.controller';
 
 const Controllers = [
   ProductController,
@@ -22,6 +23,7 @@ const Controllers = [
   ChatController,
   AdminBillController,
   UserController,
+  VoucherController,
 ];
 
 export default Controllers;

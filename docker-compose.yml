@@ -4,8 +4,22 @@ services:
     ports:
       - "6379:6379"
     networks:
-      - nexo-network
+      - ute-shop
+  meilisearch:
+    image: getmeili/meilisearch:latest
+    container_name: meilisearch
+    ports:
+      - "7700:7700"
+    environment:
+      MEILI_MASTER_KEY: masterKey
+      MEILI_ENV: development
+    volumes:
+      - meilisearch_data:/meili_data
+    networks:
+      - ute-shop
 
 networks:
-  nexo-network:
+  ute-shop:
     driver: bridge
+volumes:
+  meilisearch_data:

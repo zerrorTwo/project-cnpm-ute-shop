@@ -4,6 +4,7 @@ import {
   BadRequestException,
   NotFoundException,
   Optional,
+  OnModuleInit,
 } from '@nestjs/common';
 import { BillRepository } from '../repositories/bill.repository';
 import { CartRepository } from '../repositories/cart.repository';
@@ -33,9 +34,10 @@ import { ENotificationType } from 'src/entities/notification.entity';
 import { UpdateBillStatusDto } from 'src/dtos/request/update-bill-status.dto';
 import { LoyaltyPointRepository } from 'src/repositories/loyalty-point.repository';
 import { EPointTransactionType } from 'src/entities/loyalty-point.entity';
+import { OrderSearchService } from './order-search.service';
 
 @Injectable()
-export class BillService {
+export class BillService implements OnModuleInit {
   private readonly logger = new Logger(BillService.name);
 
   constructor(
@@ -50,9 +52,33 @@ export class BillService {
     private readonly lineItemRepository: Repository<LineItem>,
 
     private readonly lineItemRepository2: LineItemRepository,
+    @Optional() private readonly orderSearchService?: OrderSearchService,
     @Optional() private readonly vnpayService?: VNPayService,
     private readonly notificationService?: NotificationService,
   ) {}
+
+  async onModuleInit() {
+    if (!this.orderSearchService) {
+      this.logger.log('Order search service not configured; skip reindex.');
+      return;
+    }
+
+    try {
+      await this.reindexAllBills();
+    } catch (error) {
+      this.logger.warn(
+        `Failed to reindex bills to Meilisearch on startup: ${error?.message}`,
+      );
+    }
+  }
+
+  private async reindexAllBills() {
+    const bills = await this.billRepository.findAllForSearch();
+    if (!bills.length) return;
+
+    await this.orderSearchService?.indexBills(bills);
+    this.logger.log(`Indexed ${bills.length} bills to Meilisearch on startup.`);
+  }
 
   async getOrdersByUserId(
     userId: number,
@@ -61,16 +87,61 @@ export class BillService {
     status?: string,
     search?: string,
   ) {
-    const bills = await this.billRepository.findByUserIdWithPagination(
-      userId,
-      page,
-      limit,
-      status,
-      search,
-    );
+    let billsData: Bill[] = [];
+    let total = 0;
+    let usedSearch = false;
+
+    if (search) {
+      try {
+        const searchResult = await this.orderSearchService?.searchBills(
+          search,
+          page,
+          limit,
+          { status, customerId: userId },
+        );
+
+        if (searchResult) {
+          usedSearch = true;
+          const billsFromSearch = await this.billRepository.findByIds(
+            searchResult.ids,
+          );
+
+          billsData = searchResult.ids
+            .map((id) => billsFromSearch.find((bill) => bill.id === id))
+            .filter((bill): bill is Bill => Boolean(bill));
+
+          total = searchResult.total;
+        }
+      } catch (error) {
+        this.logger.warn(`Order search fallback to DB: ${error?.message}`);
+      }
+    }
+
+    if (!usedSearch) {
+      const bills = await this.billRepository.findByUserIdWithPagination(
+        userId,
+        page,
+        limit,
+        status,
+        search,
+      );
+
+      billsData = bills.data;
+      total = bills.total;
+
+      if (search && bills.data.length) {
+        this.orderSearchService
+          ?.indexBills(bills.data)
+          .catch((err) =>
+            this.logger.warn(
+              `Cannot sync bills to Meilisearch: ${err?.message}`,
+            ),
+          );
+      }
+    }
 
     const ordersWithReviews = await Promise.all(
-      bills.data.map(async (bill) => {
+      billsData.map(async (bill) => {
         const itemsWithReviewStatus = await Promise.all(
           bill.items.map(async (item) => {
             const isReviewed =
@@ -116,10 +187,10 @@ export class BillService {
 
     return {
       data: ordersWithReviews,
-      total: bills.total,
+      total,
       page,
       limit,
-      totalPages: Math.ceil(bills.total / limit),
+      totalPages: Math.ceil(total / limit),
     };
   }
 
@@ -331,6 +402,15 @@ export class BillService {
       this.logger.warn('Failed to create notification: ' + err?.message);
     }
 
+    try {
+      const hydratedBill = await this.billRepository.findById(bill.id);
+      if (hydratedBill) {
+        await this.orderSearchService?.indexBills(hydratedBill);
+      }
+    } catch (err) {
+      this.logger.warn(`Failed to sync bill to Meilisearch: ${err?.message}`);
+    }
+
     if (checkoutData.paymentMethod === EPaymentMethod.CASH) {
       return {
         success: true,
@@ -485,6 +565,14 @@ export class BillService {
     if (bill.payment && bill.payment.paymentStatus === EPaymentStatus.PENDING) {
       bill.payment.paymentStatus = EPaymentStatus.FAILED;
       await this.paymentRepository.save(bill.payment);
+    }
+
+    try {
+      await this.orderSearchService?.indexBills(bill);
+    } catch (err) {
+      this.logger.warn(
+        `Failed to update bill in Meilisearch after cancel: ${err?.message}`,
+      );
     }
     return {
       success: true,
@@ -720,12 +808,57 @@ export class BillService {
     search?: string,
     status?: EBillStatus,
   ) {
-    const { data, total } = await this.billRepository.findAllWithPagination(
-      page,
-      limit,
-      search,
-      status,
-    );
+    let data: Bill[] = [];
+    let total = 0;
+    let usedSearch = false;
+
+    if (search) {
+      try {
+        const searchResult = await this.orderSearchService?.searchBills(
+          search,
+          page,
+          limit,
+          { status },
+        );
+
+        if (searchResult) {
+          usedSearch = true;
+          const billsFromSearch = await this.billRepository.findByIds(
+            searchResult.ids,
+          );
+
+          data = searchResult.ids
+            .map((id) => billsFromSearch.find((bill) => bill.id === id))
+            .filter((bill): bill is Bill => Boolean(bill));
+
+          total = searchResult.total;
+        }
+      } catch (error) {
+        this.logger.warn(`Order search fallback to DB: ${error?.message}`);
+      }
+    }
+
+    if (!usedSearch) {
+      const result = await this.billRepository.findAllWithPagination(
+        page,
+        limit,
+        search,
+        status,
+      );
+
+      data = result.data;
+      total = result.total;
+
+      if (search && result.data.length) {
+        this.orderSearchService
+          ?.indexBills(result.data)
+          .catch((err) =>
+            this.logger.warn(
+              `Cannot sync bills to Meilisearch: ${err?.message}`,
+            ),
+          );
+      }
+    }
 
     return {
       data,
@@ -837,6 +970,14 @@ export class BillService {
       }
     } catch (err) {
       this.logger.warn('Failed to send notification: ' + err.message);
+    }
+
+    try {
+      await this.orderSearchService?.indexBills(savedBill);
+    } catch (err) {
+      this.logger.warn(
+        `Failed to sync bill update to Meilisearch: ${err?.message}`,
+      );
     }
 
     return savedBill;
