@@ -3,6 +3,7 @@ import { CategoryController } from './category.controller';
 import { DiscountCampaignController } from './discount-campaign.controller';
 import { ProductController } from './product.controller';
 import { AdminCommentController } from './comment.controller';
+import { AdminReviewController } from './review.controller';
 import { DashboardController } from './dashboard.controller';
 import { AdminNotificationController } from './notification.controller';
 import { ChatController } from './chat.controller';
@@ -16,6 +17,7 @@ const Controllers = [
   CategoryController,
   DiscountCampaignController,
   AdminCommentController,
+  AdminReviewController,
   DashboardController,
   AdminNotificationController,
   ChatController,

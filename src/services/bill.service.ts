@@ -32,6 +32,8 @@ import { UserRepository } from 'src/repositories/user.repository';
 import { NotificationService } from './notification.service';
 import { ENotificationType } from 'src/entities/notification.entity';
 import { UpdateBillStatusDto } from 'src/dtos/request/update-bill-status.dto';
+import { LoyaltyPointRepository } from 'src/repositories/loyalty-point.repository';
+import { EPointTransactionType } from 'src/entities/loyalty-point.entity';
 import { OrderSearchService } from './order-search.service';
 
 @Injectable()
@@ -45,6 +47,7 @@ export class BillService implements OnModuleInit {
     private readonly paymentRepository: PaymentRepository,
     private readonly commentRepository: CommentRepository,
     private readonly userRepository: UserRepository,
+    private readonly loyaltyPointRepository: LoyaltyPointRepository,
     @InjectRepository(LineItem)
     private readonly lineItemRepository: Repository<LineItem>,
 
@@ -264,7 +267,26 @@ export class BillService implements OnModuleInit {
 
     const shipping = 0;
     const tax = subtotal * 0.1;
-    const total = subtotal + shipping + tax;
+    let total = subtotal + shipping + tax;
+
+    // Xử lý sử dụng điểm tích lũy
+    let pointsDiscount = 0;
+    let pointsUsed = 0;
+    if (checkoutData.loyaltyPointsUsed && checkoutData.loyaltyPointsUsed > 0) {
+      try {
+        const result = await this.useLoyaltyPoints(
+          userId,
+          checkoutData.loyaltyPointsUsed,
+          total,
+        );
+        pointsDiscount = result.discount;
+        pointsUsed = result.pointsUsed;
+        total = Math.max(0, total - pointsDiscount); // Tổng tiền sau khi giảm điểm
+      } catch (error) {
+        this.logger.error(`Failed to use loyalty points: ${error.message}`);
+        throw error;
+      }
+    }
 
     const billCode = Date.now();
     const orderId = Math.floor(Math.random() * 1000000);
@@ -299,7 +321,7 @@ export class BillService implements OnModuleInit {
     const bill = await this.billRepository.create({
       customer: { id: userId } as any,
       total,
-      discount: 0,
+      discount: pointsDiscount, // Lưu số tiền giảm từ điểm
       paymentMethod: checkoutData.paymentMethod,
       status: billStatus,
       billCode,
@@ -442,6 +464,19 @@ export class BillService implements OnModuleInit {
       }
 
       await this.billRepository.save(bill);
+
+      // Cộng điểm khi thanh toán thành công
+      // Cộng điểm dựa trên số tiền THỰC TẾ đã thanh toán (bill.total đã là số tiền sau khi trừ discount)
+      try {
+        if (bill.customer && bill.customer.id) {
+          // bill.total đã là số tiền thực tế đã trả (sau khi trừ giảm giá từ điểm nếu có)
+          await this.addLoyaltyPointsForOrder(bill.customer.id, bill.total);
+        }
+      } catch (err) {
+        this.logger.warn(
+          'Failed to add loyalty points: ' + err?.message,
+        );
+      }
 
       try {
         if (bill.customer && bill.customer.id) {
@@ -846,7 +881,35 @@ export class BillService implements OnModuleInit {
     const oldStatus = bill.status;
     const newStatus = updateDto.status;
 
+    // Nếu status không đổi, vẫn cần kiểm tra xem có cần cộng điểm không
+    // (cho các đơn hàng đã COMPLETED từ trước khi có logic cộng điểm)
     if (oldStatus === newStatus) {
+      // Kiểm tra và cộng điểm cho đơn hàng đã COMPLETED nhưng chưa được cộng điểm
+      if (
+        newStatus === EBillStatus.COMPLETED &&
+        bill.payment?.paymentStatus === EPaymentStatus.SUCCESS &&
+        bill.customer?.id
+      ) {
+        // Kiểm tra xem đã có điểm từ đơn hàng này chưa (dựa vào description)
+        const billDescription = `Tích điểm khi đơn hàng thanh toán thành công (${bill.total.toLocaleString('vi-VN')}₫)`;
+        const existingPoints = await this.loyaltyPointRepository
+          .createQueryBuilder('lp')
+          .where('lp.userId = :userId', { userId: bill.customer.id })
+          .andWhere('lp.description = :description', { description: billDescription })
+          .getOne();
+        
+        // Nếu chưa có điểm từ đơn hàng này, cộng điểm
+        if (!existingPoints) {
+          try {
+            await this.addLoyaltyPointsForOrder(bill.customer.id, bill.total);
+            this.logger.log(`Added loyalty points for existing completed order ${bill.id}`);
+          } catch (err) {
+            this.logger.warn(
+              'Failed to add loyalty points for existing completed order: ' + err?.message,
+            );
+          }
+        }
+      }
       return bill;
     }
 
@@ -877,7 +940,23 @@ export class BillService implements OnModuleInit {
         bill.payment.paymentStatus = EPaymentStatus.SUCCESS;
         await this.paymentRepository.save(bill.payment);
       }
+      
+      // Cộng điểm khi đơn COD được hoàn thành
+      // Chỉ cộng điểm nếu status thay đổi từ PENDING -> COMPLETED (tránh cộng lại điểm)
+      if (oldStatus !== EBillStatus.COMPLETED) {
+        try {
+          if (bill.customer && bill.customer.id) {
+            // bill.total đã là số tiền thực tế đã trả (sau khi trừ giảm giá từ điểm nếu có)
+            await this.addLoyaltyPointsForOrder(bill.customer.id, bill.total);
+          }
+        } catch (err) {
+          this.logger.warn(
+            'Failed to add loyalty points: ' + err?.message,
+          );
+        }
+      }
     }
+    
     const savedBill = await this.billRepository.save(bill);
     try {
       if (bill.customer) {
@@ -915,5 +994,105 @@ export class BillService implements OnModuleInit {
       ],
     });
     return bill;
+  }
+
+  /**
+   * Cộng điểm khi đơn hàng thanh toán thành công
+   * Quy tắc: Cộng điểm dựa trên số tiền THỰC TẾ đã thanh toán (sau khi trừ giảm giá từ điểm)
+   * Tỷ lệ: 1% số tiền thực tế đã trả (ví dụ: trả 100,000₫ = 10 điểm)
+   * 
+   * Logic hợp lý:
+   * - Nếu user trả 100,000₫ (sau khi dùng điểm giảm giá) → được 10 điểm
+   * - Nếu user trả 90,000₫ (sau khi dùng 10 điểm = 10,000₫ giảm giá) → được 9 điểm
+   * - Điều này hợp lý vì user chỉ trả số tiền thực tế, nên chỉ được cộng điểm dựa trên số tiền đó
+   */
+  private async addLoyaltyPointsForOrder(userId: number, actualAmountPaid: number) {
+    // Chỉ cộng điểm nếu số tiền thực tế > 0
+    if (actualAmountPaid <= 0) {
+      this.logger.log(`No points added: actual amount paid is ${actualAmountPaid}₫`);
+      return 0;
+    }
+
+    // Tính điểm: 1% số tiền thực tế đã trả, làm tròn xuống
+    // Ví dụ: trả 100,000₫ = 10 điểm (1% = 1,000₫ = 1 điểm)
+    // Ví dụ: trả 90,000₫ = 9 điểm
+    // Ví dụ: trả 135₫ = 0 điểm (quá nhỏ, < 1,000₫)
+    const points = Math.floor(actualAmountPaid / 10000); // 10,000 VND = 1 điểm (1%)
+    
+    // Cho phép cộng điểm từ 1,000₫ trở lên (0.1 điểm)
+    // Nếu đơn hàng < 10,000₫ nhưng >= 1,000₫, vẫn cộng 1 điểm tối thiểu
+    if (actualAmountPaid >= 1000 && points === 0) {
+      return 1; // Cộng 1 điểm tối thiểu cho đơn hàng từ 1,000₫ đến 9,999₫
+    }
+    
+    if (points <= 0) {
+      return 0; // Không cộng điểm nếu số tiền quá nhỏ (< 1,000₫)
+    }
+
+    // Tạo transaction tích điểm
+    await this.loyaltyPointRepository.save({
+      user: { id: userId } as any,
+      points,
+      transactionType: EPointTransactionType.EARN,
+      description: `Tích điểm khi đơn hàng thanh toán thành công (${actualAmountPaid.toLocaleString('vi-VN')}₫)`,
+    });
+
+    // Cập nhật tổng điểm của user
+    const user = await this.userRepository.findById(userId);
+    if (user) {
+      user.totalLoyaltyPoints = (user.totalLoyaltyPoints || 0) + points;
+      await this.userRepository.update(userId, {
+        totalLoyaltyPoints: user.totalLoyaltyPoints,
+      });
+    }
+
+    this.logger.log(`Added ${points} loyalty points for user ${userId} from actual payment ${actualAmountPaid}₫`);
+    return points;
+  }
+
+  /**
+   * Sử dụng điểm để giảm giá đơn hàng
+   * Quy tắc: 1 điểm = 1000 VND
+   */
+  private async useLoyaltyPoints(userId: number, pointsToUse: number, orderTotal: number) {
+    if (pointsToUse <= 0) {
+      return { discount: 0, pointsUsed: 0 };
+    }
+
+    // Lấy thông tin user để kiểm tra số điểm hiện có
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new NotFoundException('Không tìm thấy người dùng');
+    }
+
+    const availablePoints = user.totalLoyaltyPoints || 0;
+    if (availablePoints < pointsToUse) {
+      throw new BadRequestException(
+        `Bạn chỉ có ${availablePoints} điểm. Không đủ để sử dụng ${pointsToUse} điểm.`,
+      );
+    }
+
+    // Tính giảm giá: 1 điểm = 1000 VND
+    const discount = pointsToUse * 1000;
+    
+    // Không cho phép giảm giá vượt quá giá trị đơn hàng
+    const finalDiscount = Math.min(discount, orderTotal);
+
+    // Tạo transaction trừ điểm
+    await this.loyaltyPointRepository.save({
+      user: { id: userId } as any,
+      points: pointsToUse,
+      transactionType: EPointTransactionType.REDEEM,
+      description: `Sử dụng điểm để giảm giá đơn hàng (${finalDiscount.toLocaleString('vi-VN')}₫)`,
+    });
+
+    // Cập nhật tổng điểm của user
+    user.totalLoyaltyPoints = availablePoints - pointsToUse;
+    await this.userRepository.update(userId, {
+      totalLoyaltyPoints: user.totalLoyaltyPoints,
+    });
+
+    this.logger.log(`User ${userId} used ${pointsToUse} points for ${finalDiscount}₫ discount`);
+    return { discount: finalDiscount, pointsUsed: pointsToUse };
   }
 }

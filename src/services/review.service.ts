@@ -4,6 +4,7 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+import { Not, IsNull } from 'typeorm';
 import { CommentRepository } from '../repositories/comment.repository';
 import { VoucherRepository } from '../repositories/voucher.repository';
 import { LoyaltyPointRepository } from '../repositories/loyalty-point.repository';
@@ -49,7 +50,7 @@ export class ReviewService {
     // Kiểm tra bill có tồn tại và thuộc về user
     const bill = await this.billRepository.findOne({
       where: { id: billId },
-      relations: ['customer', 'items', 'items.product'],
+      relations: ['customer', 'items', 'items.product', 'payment'],
     });
 
     if (!bill) {
@@ -61,7 +62,7 @@ export class ReviewService {
     }
 
     // Chỉ cho phép đánh giá đơn đã thanh toán
-    if (bill.payment.paymentStatus !== EPaymentStatus.SUCCESS) {
+    if (!bill.payment || bill.payment.paymentStatus !== EPaymentStatus.SUCCESS) {
       throw new BadRequestException(
         'Chỉ có thể đánh giá sản phẩm từ đơn hàng đã thanh toán',
       );
@@ -209,13 +210,34 @@ export class ReviewService {
 
     return {
       totalPoints: user?.totalLoyaltyPoints || 0,
-      history: history.map((h) => ({
+      transactions: history.map((h) => ({
+        id: h.id,
+        userId: userId,
+        transactionType: h.transactionType,
         points: h.points,
-        type: h.transactionType,
         description: h.description,
         createdAt: h.createdAt,
       })),
     };
+  }
+
+  /**
+   * Lấy danh sách reviews của user (chỉ productId và billId để filter)
+   */
+  async getUserReviews(userId: number) {
+    const reviews = await this.commentRepository.find({
+      where: {
+        customer: { id: userId },
+        rating: Not(IsNull()), // Chỉ lấy reviews (có rating), không lấy comments
+      },
+      relations: ['product', 'bill'],
+    });
+
+    // Trả về danh sách productId và billId để filter
+    return reviews.map((review) => ({
+      productId: review.product.id,
+      billId: review.bill.id,
+    }));
   }
 
   private async updateProductRating(productId: number) {
@@ -240,5 +262,80 @@ export class ReviewService {
         `Product ${productId} rating updated to ${product.ratingAvg}`,
       );
     }
+  }
+
+  // Admin methods
+  async getAllReviews(params: {
+    page: number;
+    limit: number;
+    rating?: number;
+    hasRewardGiven?: boolean;
+    search?: string;
+  }) {
+    const { page, limit, rating, hasRewardGiven, search } = params;
+    const result = await this.commentRepository.findAllReviews({
+      page,
+      limit,
+      rating,
+      hasRewardGiven,
+      search,
+    });
+
+    return {
+      data: result.reviews.map((review) => ({
+        id: review.id,
+        productId: review.product.id,
+        userId: review.customer.id,
+        billId: review.bill?.id || 0,
+        rating: review.rating,
+        description: review.description,
+        hasRewardGiven: review.hasRewardGiven,
+        createdAt: review.createdAt,
+        updatedAt: review.updatedAt,
+        user: {
+          id: review.customer.id,
+          username: review.customer.fullName || 'Anonymous',
+          email: review.customer.email,
+          avatar: review.customer.avatar,
+        },
+        product: {
+          id: review.product.id,
+          productName: review.product.productName,
+        },
+      })),
+      meta: {
+        page,
+        limit,
+        total: result.total,
+        totalPages: Math.ceil(result.total / limit),
+      },
+    };
+  }
+
+  async adminDeleteReview(reviewId: number) {
+    const review = await this.commentRepository.findOne({
+      where: { id: reviewId },
+      relations: ['product'],
+    });
+
+    if (!review) {
+      throw new NotFoundException('Không tìm thấy review');
+    }
+
+    if (!review.rating) {
+      throw new BadRequestException('Đây không phải là review');
+    }
+
+    const productId = review.product.id;
+
+    // Xóa review
+    await this.commentRepository.remove(review);
+
+    // Cập nhật lại rating của product
+    await this.updateProductRating(productId);
+
+    this.logger.log(`Review ${reviewId} deleted by admin`);
+
+    return { review: { id: reviewId } };
   }
 }

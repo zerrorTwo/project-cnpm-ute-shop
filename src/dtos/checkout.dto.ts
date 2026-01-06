@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsNumber, IsInt, Min } from 'class-validator';
+import { Type } from 'class-transformer';
 import { EPaymentMethod } from '../entities/bill.entity';
 
 export class CheckoutDto {
@@ -55,4 +56,16 @@ export class CheckoutDto {
   @IsOptional()
   @IsString()
   ipAddr?: string;
+
+  @ApiProperty({
+    description: 'Số điểm tích lũy muốn sử dụng để giảm giá',
+    example: 100,
+    required: false,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @IsInt()
+  @Min(0)
+  loyaltyPointsUsed?: number;
 }
