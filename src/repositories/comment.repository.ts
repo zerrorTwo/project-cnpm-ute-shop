@@ -96,4 +96,49 @@ export class CommentRepository extends Repository<Comment> {
 
     return { comments, total };
   }
+
+  async findAllReviews(params: {
+    page: number;
+    limit: number;
+    rating?: number;
+    hasRewardGiven?: boolean;
+    search?: string;
+  }) {
+    const { page, limit, rating, hasRewardGiven, search } = params;
+    const skip = (page - 1) * limit;
+
+    const qb = this.createQueryBuilder('comment')
+      .leftJoinAndSelect('comment.customer', 'customer')
+      .leftJoinAndSelect('comment.product', 'product')
+      .leftJoinAndSelect('comment.bill', 'bill')
+      .where('comment.rating IS NOT NULL') // Chỉ lấy reviews (có rating)
+      .andWhere('comment.parent IS NULL'); // Không lấy replies
+
+    if (rating) {
+      qb.andWhere('comment.rating = :rating', { rating });
+    }
+
+    if (hasRewardGiven !== undefined) {
+      qb.andWhere('comment.hasRewardGiven = :hasRewardGiven', {
+        hasRewardGiven,
+      });
+    }
+
+    if (search) {
+      qb.andWhere(
+        '(comment.description LIKE :search OR product.productName LIKE :search OR customer.fullName LIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    const total = await qb.getCount();
+
+    const reviews = await qb
+      .orderBy('comment.createdAt', 'DESC')
+      .skip(skip)
+      .take(limit)
+      .getMany();
+
+    return { reviews, total };
+  }
 }
