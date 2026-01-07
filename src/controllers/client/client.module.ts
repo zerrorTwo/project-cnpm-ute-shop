@@ -10,6 +10,7 @@ import { AuthService } from 'src/services/auth.service';
 import { AuthGuard } from 'src/utils/auth/auth.guard';
 import { MailModule } from 'src/mail/mail.module';
 import { GoogleStrategy } from 'src/controllers/client/google.strategy';
+import { ClientVoucherController } from 'src/controllers/client/voucher.controller';
 import { NotificationModule } from 'src/notifications.module';
 import { Product } from 'src/entities/product.entity';
 import { LineItem } from 'src/entities/line-item.entity';
@@ -56,7 +57,7 @@ import { ChatMessage } from 'src/entities/chat-message.entity';
     VnpayModule,
     NotificationModule,
   ],
-  controllers: [...Controllers],
+  controllers: [...Controllers, ClientVoucherController],
   providers: [
     ...Services,
     ...PaymentServices,

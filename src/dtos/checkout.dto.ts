@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString, IsNumber, IsInt, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsOptional,
+  IsString,
+  IsNumber,
+  IsInt,
+  Min,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { EPaymentMethod } from '../entities/bill.entity';
 
@@ -68,4 +75,13 @@ export class CheckoutDto {
   @IsInt()
   @Min(0)
   loyaltyPointsUsed?: number;
+
+  @ApiProperty({
+    description: 'Mã voucher (nếu có)',
+    example: 'SALE50',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  voucherCode?: string;
 }
