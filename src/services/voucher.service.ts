@@ -15,7 +15,7 @@ import {
   EVoucherStatus,
   EVoucherType,
 } from 'src/entities/voucher.entity';
-import { LessThan, MoreThan } from 'typeorm';
+import { LessThan, MoreThan, IsNull } from 'typeorm';
 
 @Injectable()
 export class VoucherService {
@@ -221,13 +221,26 @@ export class VoucherService {
       byType: { percentage, fixed },
     };
   }
-  async getValidVouchersForClient(): Promise<Voucher[]> {
+  async getValidVouchersForClient(userId?: number): Promise<Voucher[]> {
     const now = new Date();
-    return await this.voucherRepository.find({
-      where: {
+    const whereCondition: any[] = [
+      {
         status: EVoucherStatus.ACTIVE,
         expiryDate: MoreThan(now),
+        user: IsNull(),
       },
+    ];
+
+    if (userId) {
+      whereCondition.push({
+        status: EVoucherStatus.ACTIVE,
+        expiryDate: MoreThan(now),
+        user: { id: userId },
+      });
+    }
+
+    return await this.voucherRepository.find({
+      where: userId ? whereCondition : whereCondition[0],
       order: {
         minOrderValue: 'ASC',
       },
@@ -237,16 +250,22 @@ export class VoucherService {
   async applyVoucher(
     code: string,
     orderValue: number,
+    userId?: number,
   ): Promise<{
     discountAmount: number;
     voucher: Voucher;
   }> {
     const voucher = await this.voucherRepository.findOne({
       where: { code },
+      relations: ['user'],
     });
 
     if (!voucher) {
       throw new BadRequestException('Mã voucher không hợp lệ');
+    }
+
+    if (voucher.user && voucher.user.id !== userId) {
+      throw new BadRequestException('Voucher này không thuộc về bạn');
     }
 
     if (voucher.status !== EVoucherStatus.ACTIVE) {

@@ -8,6 +8,7 @@ import {
   Req,
 } from '@nestjs/common';
 import { VoucherService } from 'src/services/voucher.service';
+import { AuthGuard } from 'src/utils/auth/auth.guard';
 import { SuccessResponse } from 'src/dtos/response.dto';
 import { SuccessMessages } from 'src/constants/messages';
 import { HttpStatusCode } from 'axios';
@@ -16,12 +17,15 @@ import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Client - Voucher')
 @Controller('vouchers')
+@UseGuards(AuthGuard)
 export class ClientVoucherController {
   constructor(private readonly voucherService: VoucherService) {}
 
   @Get()
-  async getValidVouchers() {
-    const vouchers = await this.voucherService.getValidVouchersForClient();
+  async getValidVouchers(@Req() req: any) {
+    const userId = req.user?.id;
+    const vouchers =
+      await this.voucherService.getValidVouchersForClient(userId);
     return Builder<SuccessResponse>()
       .data({ vouchers })
       .message(SuccessMessages.GET_SUCCESSFULLY)
@@ -31,10 +35,16 @@ export class ClientVoucherController {
 
   @Post('apply')
   async applyVoucher(
+    @Req() req: any,
     @Body('code') code: string,
     @Body('orderValue') orderValue: number,
   ) {
-    const result = await this.voucherService.applyVoucher(code, orderValue);
+    const userId = req.user?.id;
+    const result = await this.voucherService.applyVoucher(
+      code,
+      orderValue,
+      userId,
+    );
     return Builder<SuccessResponse>()
       .data(result)
       .message('Áp dụng voucher thành công')
