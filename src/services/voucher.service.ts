@@ -221,4 +221,58 @@ export class VoucherService {
       byType: { percentage, fixed },
     };
   }
+  async getValidVouchersForClient(): Promise<Voucher[]> {
+    const now = new Date();
+    return await this.voucherRepository.find({
+      where: {
+        status: EVoucherStatus.ACTIVE,
+        expiryDate: MoreThan(now),
+      },
+      order: {
+        minOrderValue: 'ASC',
+      },
+    });
+  }
+
+  async applyVoucher(
+    code: string,
+    orderValue: number,
+  ): Promise<{
+    discountAmount: number;
+    voucher: Voucher;
+  }> {
+    const voucher = await this.voucherRepository.findOne({
+      where: { code },
+    });
+
+    if (!voucher) {
+      throw new BadRequestException('Mã voucher không hợp lệ');
+    }
+
+    if (voucher.status !== EVoucherStatus.ACTIVE) {
+      throw new BadRequestException('Voucher không khả dụng hoặc đã hết hạn');
+    }
+
+    if (voucher.expiryDate < new Date()) {
+      throw new BadRequestException('Voucher đã hết hạn');
+    }
+
+    if (orderValue < voucher.minOrderValue) {
+      throw new BadRequestException(
+        `Đơn hàng chưa đạt giá trị tối thiểu ${voucher.minOrderValue.toLocaleString('vi-VN')}đ`,
+      );
+    }
+
+    let discountAmount = 0;
+    if (voucher.type === EVoucherType.FIXED) {
+      discountAmount = voucher.value;
+    } else {
+      discountAmount = (orderValue * voucher.value) / 100;
+      if (voucher.maxDiscount) {
+        discountAmount = Math.min(discountAmount, voucher.maxDiscount);
+      }
+    }
+
+    return { discountAmount, voucher };
+  }
 }

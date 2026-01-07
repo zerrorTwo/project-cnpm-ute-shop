@@ -35,6 +35,7 @@ import { UpdateBillStatusDto } from 'src/dtos/request/update-bill-status.dto';
 import { LoyaltyPointRepository } from 'src/repositories/loyalty-point.repository';
 import { EPointTransactionType } from 'src/entities/loyalty-point.entity';
 import { OrderSearchService } from './order-search.service';
+import { VoucherService } from './voucher.service';
 
 @Injectable()
 export class BillService implements OnModuleInit {
@@ -55,6 +56,7 @@ export class BillService implements OnModuleInit {
     @Optional() private readonly orderSearchService?: OrderSearchService,
     @Optional() private readonly vnpayService?: VNPayService,
     private readonly notificationService?: NotificationService,
+    private readonly voucherService?: VoucherService,
   ) {}
 
   async onModuleInit() {
@@ -288,6 +290,21 @@ export class BillService implements OnModuleInit {
       }
     }
 
+    // Xử lý Voucher
+    let voucherDiscount = 0;
+    if (checkoutData.voucherCode && this.voucherService) {
+      try {
+        const voucherResult = await this.voucherService.applyVoucher(
+          checkoutData.voucherCode,
+          subtotal,
+        );
+        voucherDiscount = voucherResult.discountAmount;
+        total = Math.max(0, total - voucherDiscount);
+      } catch (error) {
+        throw new BadRequestException(error.message);
+      }
+    }
+
     const billCode = Date.now();
     const orderId = Math.floor(Math.random() * 1000000);
 
@@ -321,7 +338,7 @@ export class BillService implements OnModuleInit {
     const bill = await this.billRepository.create({
       customer: { id: userId } as any,
       total,
-      discount: pointsDiscount, // Lưu số tiền giảm từ điểm
+      discount: pointsDiscount + voucherDiscount, // Tổng giảm giá (điểm + voucher)
       paymentMethod: checkoutData.paymentMethod,
       status: billStatus,
       billCode,
@@ -473,9 +490,7 @@ export class BillService implements OnModuleInit {
           await this.addLoyaltyPointsForOrder(bill.customer.id, bill.total);
         }
       } catch (err) {
-        this.logger.warn(
-          'Failed to add loyalty points: ' + err?.message,
-        );
+        this.logger.warn('Failed to add loyalty points: ' + err?.message);
       }
 
       try {
@@ -895,17 +910,22 @@ export class BillService implements OnModuleInit {
         const existingPoints = await this.loyaltyPointRepository
           .createQueryBuilder('lp')
           .where('lp.userId = :userId', { userId: bill.customer.id })
-          .andWhere('lp.description = :description', { description: billDescription })
+          .andWhere('lp.description = :description', {
+            description: billDescription,
+          })
           .getOne();
-        
+
         // Nếu chưa có điểm từ đơn hàng này, cộng điểm
         if (!existingPoints) {
           try {
             await this.addLoyaltyPointsForOrder(bill.customer.id, bill.total);
-            this.logger.log(`Added loyalty points for existing completed order ${bill.id}`);
+            this.logger.log(
+              `Added loyalty points for existing completed order ${bill.id}`,
+            );
           } catch (err) {
             this.logger.warn(
-              'Failed to add loyalty points for existing completed order: ' + err?.message,
+              'Failed to add loyalty points for existing completed order: ' +
+                err?.message,
             );
           }
         }
@@ -940,7 +960,7 @@ export class BillService implements OnModuleInit {
         bill.payment.paymentStatus = EPaymentStatus.SUCCESS;
         await this.paymentRepository.save(bill.payment);
       }
-      
+
       // Cộng điểm khi đơn COD được hoàn thành
       // Chỉ cộng điểm nếu status thay đổi từ PENDING -> COMPLETED (tránh cộng lại điểm)
       if (oldStatus !== EBillStatus.COMPLETED) {
@@ -950,13 +970,11 @@ export class BillService implements OnModuleInit {
             await this.addLoyaltyPointsForOrder(bill.customer.id, bill.total);
           }
         } catch (err) {
-          this.logger.warn(
-            'Failed to add loyalty points: ' + err?.message,
-          );
+          this.logger.warn('Failed to add loyalty points: ' + err?.message);
         }
       }
     }
-    
+
     const savedBill = await this.billRepository.save(bill);
     try {
       if (bill.customer) {
@@ -1000,16 +1018,21 @@ export class BillService implements OnModuleInit {
    * Cộng điểm khi đơn hàng thanh toán thành công
    * Quy tắc: Cộng điểm dựa trên số tiền THỰC TẾ đã thanh toán (sau khi trừ giảm giá từ điểm)
    * Tỷ lệ: 1% số tiền thực tế đã trả (ví dụ: trả 100,000₫ = 10 điểm)
-   * 
+   *
    * Logic hợp lý:
    * - Nếu user trả 100,000₫ (sau khi dùng điểm giảm giá) → được 10 điểm
    * - Nếu user trả 90,000₫ (sau khi dùng 10 điểm = 10,000₫ giảm giá) → được 9 điểm
    * - Điều này hợp lý vì user chỉ trả số tiền thực tế, nên chỉ được cộng điểm dựa trên số tiền đó
    */
-  private async addLoyaltyPointsForOrder(userId: number, actualAmountPaid: number) {
+  private async addLoyaltyPointsForOrder(
+    userId: number,
+    actualAmountPaid: number,
+  ) {
     // Chỉ cộng điểm nếu số tiền thực tế > 0
     if (actualAmountPaid <= 0) {
-      this.logger.log(`No points added: actual amount paid is ${actualAmountPaid}₫`);
+      this.logger.log(
+        `No points added: actual amount paid is ${actualAmountPaid}₫`,
+      );
       return 0;
     }
 
@@ -1018,13 +1041,13 @@ export class BillService implements OnModuleInit {
     // Ví dụ: trả 90,000₫ = 9 điểm
     // Ví dụ: trả 135₫ = 0 điểm (quá nhỏ, < 1,000₫)
     const points = Math.floor(actualAmountPaid / 10000); // 10,000 VND = 1 điểm (1%)
-    
+
     // Cho phép cộng điểm từ 1,000₫ trở lên (0.1 điểm)
     // Nếu đơn hàng < 10,000₫ nhưng >= 1,000₫, vẫn cộng 1 điểm tối thiểu
     if (actualAmountPaid >= 1000 && points === 0) {
       return 1; // Cộng 1 điểm tối thiểu cho đơn hàng từ 1,000₫ đến 9,999₫
     }
-    
+
     if (points <= 0) {
       return 0; // Không cộng điểm nếu số tiền quá nhỏ (< 1,000₫)
     }
@@ -1046,7 +1069,9 @@ export class BillService implements OnModuleInit {
       });
     }
 
-    this.logger.log(`Added ${points} loyalty points for user ${userId} from actual payment ${actualAmountPaid}₫`);
+    this.logger.log(
+      `Added ${points} loyalty points for user ${userId} from actual payment ${actualAmountPaid}₫`,
+    );
     return points;
   }
 
@@ -1054,7 +1079,11 @@ export class BillService implements OnModuleInit {
    * Sử dụng điểm để giảm giá đơn hàng
    * Quy tắc: 1 điểm = 1000 VND
    */
-  private async useLoyaltyPoints(userId: number, pointsToUse: number, orderTotal: number) {
+  private async useLoyaltyPoints(
+    userId: number,
+    pointsToUse: number,
+    orderTotal: number,
+  ) {
     if (pointsToUse <= 0) {
       return { discount: 0, pointsUsed: 0 };
     }
@@ -1074,7 +1103,7 @@ export class BillService implements OnModuleInit {
 
     // Tính giảm giá: 1 điểm = 1000 VND
     const discount = pointsToUse * 1000;
-    
+
     // Không cho phép giảm giá vượt quá giá trị đơn hàng
     const finalDiscount = Math.min(discount, orderTotal);
 
@@ -1092,7 +1121,9 @@ export class BillService implements OnModuleInit {
       totalLoyaltyPoints: user.totalLoyaltyPoints,
     });
 
-    this.logger.log(`User ${userId} used ${pointsToUse} points for ${finalDiscount}₫ discount`);
+    this.logger.log(
+      `User ${userId} used ${pointsToUse} points for ${finalDiscount}₫ discount`,
+    );
     return { discount: finalDiscount, pointsUsed: pointsToUse };
   }
 }
